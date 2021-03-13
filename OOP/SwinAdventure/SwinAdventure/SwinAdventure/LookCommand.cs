@@ -20,28 +20,33 @@ namespace SwinAdventure
                 return "What do you want to look at?";
             }
 
-            string thingId = text[2];
+            
             IHasInventory container;
-
-            if (text.Length == 5)
+            switch (text.Length)
             {
-                if (text[3] != "in")
-                {
-                    return "What do you want to look in?";
-                }
+                case 3:
+                    container = player;
+                    break;
+                case 5:
+                    if (text[3] != "in")
+                    {
+                        return "What do you want to look in?";
+                    }
 
-                string containerId = text[4];
-                container = FetchContainer(player, containerId);
+                    string containerId = text[4];
+                    container = FetchContainer(player, containerId);
 
-                if (container == null)
-                {
-                    return string.Format("I cannot find the {0}", containerId);
-                }
+                    if (container == null)
+                    {
+                        return string.Format("I cannot find the {0}", containerId);
+                    }
+                    break;
+
+                default:
+                    return "I can't look in that";
             }
-            else
-            {
-                container = player;
-            }
+
+            string thingId = text[2];
 
             return LookAtIn(thingId, container);
         }
