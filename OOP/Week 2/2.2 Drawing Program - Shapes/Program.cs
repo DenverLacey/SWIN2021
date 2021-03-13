@@ -6,7 +6,7 @@ public class Program
     public static void Main()
     {
         new Window("Shape Drawer", 800, 600);
-        Shape shape = new Shape(Color.Red, 300, 200, 100, 100);
+        var shape = new Shape(Color.Red, 300, 200, 100, 100);
 
         do
         {

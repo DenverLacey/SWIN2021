@@ -24,7 +24,5 @@ namespace Counter
         {
             count = 0;
         }
-
-
     }
 }
