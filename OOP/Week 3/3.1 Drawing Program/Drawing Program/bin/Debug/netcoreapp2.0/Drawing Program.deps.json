@@ -1,0 +1,23 @@
+{
+  "runtimeTarget": {
+    "name": ".NETCoreApp,Version=v2.0",
+    "signature": ""
+  },
+  "compilationOptions": {},
+  "targets": {
+    ".NETCoreApp,Version=v2.0": {
+      "Drawing Program/1.0.0": {
+        "runtime": {
+          "Drawing Program.dll": {}
+        }
+      }
+    }
+  },
+  "libraries": {
+    "Drawing Program/1.0.0": {
+      "type": "project",
+      "serviceable": false,
+      "sha512": ""
+    }
+  }
+}
