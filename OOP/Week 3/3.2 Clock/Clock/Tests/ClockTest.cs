@@ -11,7 +11,7 @@ namespace Tests
         {
             var clock = new Clock();
             int expected = 0;
-            int actual = clock.Ticks;
+            int actual = clock.Seconds;
             Assert.AreEqual(expected, actual);
         }
 
@@ -19,12 +19,12 @@ namespace Tests
         public void TestTickOnce()
         {
             var clock = new Clock();
-            int old = clock.Ticks;
+            int old = clock.Seconds;
             int expected = old + 1;
 
             clock.Tick();
 
-            int actual = clock.Ticks;
+            int actual = clock.Seconds;
 
             Assert.AreEqual(expected, actual);
         }
@@ -33,7 +33,7 @@ namespace Tests
         public void TestTickMany()
         {
             var clock = new Clock();
-            int old = clock.Ticks;
+            int old = clock.Seconds;
             const int ticks = 30;
             int expected = old + ticks;
 
@@ -42,7 +42,7 @@ namespace Tests
                 clock.Tick();
             }
 
-            int actual = clock.Ticks;
+            int actual = clock.Seconds;
 
             Assert.AreEqual(expected, actual);
         }
@@ -58,16 +58,17 @@ namespace Tests
 
             clock.Reset();
 
-            Assert.AreEqual(0, clock.Ticks);
+            Assert.AreEqual(0, clock.Seconds);
         }
 
         [Test]
         public void TestFromString()
         {
-            int expected = (3 * 60 * 60) + (17 * 60) + 32;
             var clock = new Clock("3:17:32");
-            int actual = clock.Ticks;
-            Assert.AreEqual(expected, actual);
+
+            Assert.AreEqual(32, clock.Seconds);
+            Assert.AreEqual(17, clock.Minutes);
+            Assert.AreEqual(3, clock.Hours);
         }
     }
 }

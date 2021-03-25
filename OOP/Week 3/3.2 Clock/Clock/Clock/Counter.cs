@@ -15,6 +15,12 @@ namespace ClockNamspace
             count = 0;
         }
 
+        public Counter(string name, int count)
+            : this(name)
+        {
+            this.count = count;
+        }
+
         public void Increment()
         {
             count++;
