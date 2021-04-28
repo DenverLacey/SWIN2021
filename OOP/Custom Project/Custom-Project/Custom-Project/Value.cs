@@ -105,6 +105,11 @@ namespace CustomProject
         {
             return true;
         }
+
+        public override string ToString()
+        {
+            return "nil";
+        }
     }
 
     public class BooleanValue : Value
@@ -130,6 +135,11 @@ namespace CustomProject
         public override void SetBoolean(bool value)
         {
             this.value = value;
+        }
+
+        public override string ToString()
+        {
+            return value.ToString().ToLower();
         }
     }
 

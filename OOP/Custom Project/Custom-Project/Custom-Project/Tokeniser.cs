@@ -14,6 +14,8 @@ namespace CustomProject
             Error,
             EndStatement,
 
+            LiteralNil,
+            LiteralBoolean,
             LiteralNumber,
             LiteralString,
 
@@ -24,6 +26,7 @@ namespace CustomProject
             KeywordIf,
             KeywordElif,
             KeywordElse,
+            KeywordWhile,
 
             OpPlus,
             OpEqual,
@@ -221,8 +224,24 @@ namespace CustomProject
             string word = TokenString;
 
             Token.Kind kind;
+            Value value = null;
             switch (word)
             {
+                case "nil":
+                    kind = Token.Kind.LiteralNil;
+                    value = new NilValue();
+                    break;
+
+                case "true":
+                    kind = Token.Kind.LiteralBoolean;
+                    value = new BooleanValue(true);
+                    break;
+
+                case "false":
+                    kind = Token.Kind.LiteralBoolean;
+                    value = new BooleanValue(false);
+                    break;
+
                 case "var":
                     kind = Token.Kind.KeywordVar;
                     break;
@@ -243,12 +262,16 @@ namespace CustomProject
                     kind = Token.Kind.KeywordElse;
                     break;
 
+                case "while":
+                    kind = Token.Kind.KeywordWhile;
+                    break;
+
                 default:
                     kind = Token.Kind.Identifier;
                     break;
             }
 
-            return new Token(kind, word, null);
+            return new Token(kind, word, value);
         }
 
         private Token ProcessOperator()

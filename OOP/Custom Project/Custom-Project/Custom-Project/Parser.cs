@@ -41,6 +41,8 @@ namespace CustomProject
             new ParseRule(Precedence.None, null, null), // Error
             new ParseRule(Precedence.None, null, null), // EndStatement
 
+            new ParseRule(Precedence.None, LiteralParseFn, null), // LiteralNil
+            new ParseRule(Precedence.None, LiteralParseFn, null), // LiteralBoolean
             new ParseRule(Precedence.None, LiteralParseFn, null), // LiteralNumber
             new ParseRule(Precedence.None, LiteralParseFn, null), // LiteralString
 
@@ -51,6 +53,7 @@ namespace CustomProject
             new ParseRule(Precedence.None, null, null), // KeywordIf
             new ParseRule(Precedence.None, null, null), // KeywordElif
             new ParseRule(Precedence.None, null, null), // KeywordElse
+            new ParseRule(Precedence.None, null, null), // KeywordWhile
 
             new ParseRule(Precedence.Term, null, BinaryParseFn), // OpPlus
             new ParseRule(Precedence.Assignment, null, AssigmentParseFn), // OpEqual
@@ -120,8 +123,13 @@ namespace CustomProject
         {
             if (!condition)
             {
-                throw new Exception(string.Format(format, args));
+                Error(format, args);
             }
+        }
+
+        private void Error(string format, params object[] args)
+        {
+            throw new Exception(string.Format(format, args));
         }
 
         public List<IAST> Parse(List<Token> tokens)
@@ -151,8 +159,9 @@ namespace CustomProject
 
             if (error)
             {
-                return new List<IAST>();
+                program.Clear();
             }
+
             return program;
         }
 
@@ -174,6 +183,10 @@ namespace CustomProject
             if (Next(Token.Kind.KeywordIf))
             {
                 ParseIfStatement();
+            }
+            else if (Next(Token.Kind.KeywordWhile))
+            {
+                ParseWhileStatement();
             }
             else
             {
@@ -255,7 +268,7 @@ namespace CustomProject
 
         private void ParseBinary()
         {
-            Token.Kind op = Previous.kind;
+            Token op = Previous;
 
             IAST lhs = ast;
 
@@ -263,18 +276,18 @@ namespace CustomProject
             ParsePrecedence(nextPrec);
             IAST rhs = ast;
 
-            switch (op)
+            switch (op.kind)
             {
                 case Token.Kind.OpPlus:
                     ast = new Addition(lhs, rhs);
                     break;
 
-                case Token.Kind.OpEqual:
-                    throw new NotImplementedException();
-                    break;
-
                 case Token.Kind.OpDoubleEqual:
                     ast = new Equality(lhs, rhs);
+                    break;
+
+                default:
+                    Error("Expected binary operator but found '{0}'.", op.source);
                     break;
             }
         }
@@ -286,7 +299,14 @@ namespace CustomProject
 
         private void ParseAssignment()
         {
-            throw new NotImplementedException();
+            IAST lhs = ast;
+            Assert(lhs is Identifier, "First argument of '=' must be an identifier.");
+            string id = (lhs as Identifier).Id;
+
+            ParseExpression();
+            IAST assigner = ast;
+
+            ast = new VariableAssignment(id, assigner);
         }
 
         private void ParseIfStatement()
@@ -324,6 +344,18 @@ namespace CustomProject
             }
 
             ast = new IfStatement(cond, then, @else);
+        }
+
+        private void ParseWhileStatement()
+        {
+            ParseExpression();
+            IAST cond = ast;
+
+            Expect(Token.Kind.EndStatement, "Body of 'if' statement must be on subsequent lines.");
+            ParseBlock();
+            Block body = ast as Block;
+
+            ast = new WhileStatement(cond, body);
         }
     }
 }

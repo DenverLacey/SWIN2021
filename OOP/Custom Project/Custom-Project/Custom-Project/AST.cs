@@ -49,16 +49,16 @@ namespace CustomProject
 
     public class Identifier : IAST
     {
-        string id;
+        public string Id { get; private set; }
 
         public Identifier(string id)
         {
-            this.id = id;
+            Id = id;
         }
 
         public Value Execute(VM vm)
         {
-            return vm.Variables[id];
+            return vm.Variables[Id];
         }
     }
 
@@ -77,6 +77,24 @@ namespace CustomProject
         {
             Value value = initializer.Execute(vm);
             vm.Variables.Add(id, value);
+            return new NilValue();
+        }
+    }
+
+    public class VariableAssignment : IAST
+    {
+        string id;
+        IAST assigner;
+
+        public VariableAssignment(string id, IAST assigner)
+        {
+            this.id = id;
+            this.assigner = assigner;
+        }
+
+        public Value Execute(VM vm)
+        {
+            vm.Variables[id] = assigner.Execute(vm);
             return new NilValue();
         }
     }
@@ -117,6 +135,32 @@ namespace CustomProject
                 }
             }
             
+            return new NilValue();
+        }
+    }
+
+    public class WhileStatement : IAST
+    {
+        IAST cond;
+        Block body;
+
+        public WhileStatement(IAST cond, Block body)
+        {
+            this.cond = cond;
+            this.body = body;
+        }
+
+        public Value Execute(VM vm)
+        {
+            while (true)
+            {
+                Value condValue = cond.Execute(vm);
+                Value.AssertType(Value.ValueType.Boolean, condValue,
+                    "Condition of 'while' statement must be 'Boolean' but was given '{0}'.", condValue.Type);
+                if (!condValue.GetBoolean())
+                    break;
+                body.Execute(vm);
+            }
             return new NilValue();
         }
     }
