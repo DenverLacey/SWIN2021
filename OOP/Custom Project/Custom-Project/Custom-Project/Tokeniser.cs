@@ -13,22 +13,35 @@ namespace CustomProject
             EOF,
             Error,
             EndStatement,
+            Comma,
+
+            DelimOpenParenthesis,
+            DelimCloseParenthesis,
 
             LiteralNil,
             LiteralBoolean,
             LiteralNumber,
             LiteralString,
+            LiteralChar,
 
             Identifier,
 
             KeywordVar,
+            KeywordConst,
+            KeywordFn,
             KeywordEnd,
             KeywordIf,
             KeywordElif,
             KeywordElse,
             KeywordWhile,
+            KeywordBreak,
+            KeywordContinue,
+            KeywordReturn,
 
             OpPlus,
+            OpDash,
+            OpStar,
+            OpSlash,
             OpEqual,
             OpDoubleEqual,
         }
@@ -148,6 +161,11 @@ namespace CustomProject
 
             SkipWhitespace();
 
+            if (tokenStart == source.Length)
+            {
+                return Token.EOF;
+            }
+
             if (char.IsDigit(source[tokenStart]))
             {
                 token = ProcessNumber();
@@ -155,6 +173,10 @@ namespace CustomProject
             else if (source[tokenStart] == '"')
             {
                 token = ProcessString();
+            }
+            else if (source[tokenStart] == '\'')
+            {
+                token = ProcessCharacter();
             }
             else if (char.IsLetter(source[tokenStart]))
             {
@@ -214,6 +236,30 @@ namespace CustomProject
             return token;
         }
 
+        private Token ProcessCharacter()
+        {
+            // skip ' character
+            tokenStart++;
+            do
+            {
+                tokenLength++;
+            } while (CurrentChar != '\'');
+
+            if (tokenLength != 1)
+            {
+                return new Token(Token.Kind.Error, TokenString, null);
+            }
+
+            string charString = TokenString;
+            Value charVal = new CharValue(charString[0]);
+            Token token = new Token(Token.Kind.LiteralChar, charString, charVal);
+
+            // skip last ' character
+            tokenLength++;
+
+            return token;
+        }
+
         private Token ProcessIdentifierOrKeyword()
         {
             do
@@ -246,6 +292,14 @@ namespace CustomProject
                     kind = Token.Kind.KeywordVar;
                     break;
 
+                case "const":
+                    kind = Token.Kind.KeywordConst;
+                    break;
+
+                case "fn":
+                    kind = Token.Kind.KeywordFn;
+                    break;
+
                 case "end":
                     kind = Token.Kind.KeywordEnd;
                     break;
@@ -266,6 +320,18 @@ namespace CustomProject
                     kind = Token.Kind.KeywordWhile;
                     break;
 
+                case "break":
+                    kind = Token.Kind.KeywordBreak;
+                    break;
+
+                case "continue":
+                    kind = Token.Kind.KeywordContinue;
+                    break;
+
+                case "return":
+                    kind = Token.Kind.KeywordReturn;
+                    break;
+
                 default:
                     kind = Token.Kind.Identifier;
                     break;
@@ -280,8 +346,28 @@ namespace CustomProject
             Token.Kind kind;
             switch (PreviousChar)
             {
+                case ',':
+                    kind = Token.Kind.Comma;
+                    break;
+
+                case '(':
+                    kind = Token.Kind.DelimOpenParenthesis;
+                    break;
+                case ')':
+                    kind = Token.Kind.DelimCloseParenthesis;
+                    break;
+
                 case '+':
                     kind = Token.Kind.OpPlus;
+                    break;
+                case '-':
+                    kind = Token.Kind.OpDash;
+                    break;
+                case '*':
+                    kind = Token.Kind.OpStar;
+                    break;
+                case '/':
+                    kind = Token.Kind.OpSlash;
                     break;
                 case '=':
                     if (CurrentChar == '=')

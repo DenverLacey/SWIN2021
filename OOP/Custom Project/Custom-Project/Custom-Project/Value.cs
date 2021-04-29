@@ -1,4 +1,6 @@
 ﻿using System;
+using System.Text;
+
 namespace CustomProject
 {
     public abstract class Value
@@ -11,6 +13,8 @@ namespace CustomProject
             Boolean,
             Number,
             String,
+            Char,
+            Lambda,
         }
 
         public ValueType Type { get; protected set; }
@@ -84,6 +88,26 @@ namespace CustomProject
         }
 
         public virtual void SetString(string value)
+        {
+            throw new Exception("Value is not a string.");
+        }
+
+        public virtual char GetChar()
+        {
+            throw new Exception("Value is not a string.");
+        }
+
+        public virtual void SetChar(char value)
+        {
+            throw new Exception("Value is not a string.");
+        }
+
+        public virtual LambdaExpression GetLambda()
+        {
+            throw new Exception("Value is not a string.");
+        }
+
+        public virtual void SetLambda(LambdaExpression value)
         {
             throw new Exception("Value is not a string.");
         }
@@ -202,6 +226,78 @@ namespace CustomProject
         public override string ToString()
         {
             return value.ToString();
+        }
+    }
+
+    public class CharValue : Value
+    {
+        private char value;
+
+        public CharValue(char value)
+            : base(ValueType.Char)
+        {
+            this.value = value;
+        }
+
+        public override bool UncheckedEqual(Value other)
+        {
+            return value == other.GetChar();
+        }
+
+        public override char GetChar()
+        {
+            return value;
+        }
+
+        public override void SetChar(char value)
+        {
+            this.value = value;
+        }
+
+        public override string ToString()
+        {
+            return value.ToString();
+        }
+    }
+
+    public class LambdaValue : Value
+    {
+        private LambdaExpression value;
+
+        public LambdaValue(LambdaExpression value)
+            : base(ValueType.Lambda)
+        {
+            this.value = value;
+        }
+
+        public override bool UncheckedEqual(Value other)
+        {
+            return value == other.GetLambda();
+        }
+
+        public override LambdaExpression GetLambda()
+        {
+            return value;
+        }
+
+        public override void SetLambda(LambdaExpression value)
+        {
+            this.value = value;
+        }
+
+        public override string ToString()
+        {
+            StringBuilder builder = new StringBuilder("fn(");
+            for (int i = 0; i < value.Args.Count; i++)
+            {
+                builder.Append(value.Args[i]);
+                if (i + 1 < value.Args.Count)
+                {
+                    builder.Append(", ");
+                }
+            }
+            builder.Append(")");
+            return builder.ToString();
         }
     }
 }

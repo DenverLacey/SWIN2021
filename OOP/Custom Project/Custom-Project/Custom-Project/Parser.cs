@@ -19,6 +19,12 @@ namespace CustomProject
             Primary,
         }
 
+        private enum InstantiationKind
+        {
+            Variable,
+            Constant,
+        }
+
         delegate void ParseFn(Parser p);
 
         private struct ParseRule
@@ -40,22 +46,35 @@ namespace CustomProject
             new ParseRule(Precedence.None, null, null), // EOF
             new ParseRule(Precedence.None, null, null), // Error
             new ParseRule(Precedence.None, null, null), // EndStatement
+            new ParseRule(Precedence.None, null, null), // Comma
+
+            new ParseRule(Precedence.Call, GroupParseFn, InvokeParseFn), // DelimOpenParenthesis
+            new ParseRule(Precedence.None, null, null), // DelimCloseParenthesis
 
             new ParseRule(Precedence.None, LiteralParseFn, null), // LiteralNil
             new ParseRule(Precedence.None, LiteralParseFn, null), // LiteralBoolean
             new ParseRule(Precedence.None, LiteralParseFn, null), // LiteralNumber
             new ParseRule(Precedence.None, LiteralParseFn, null), // LiteralString
+            new ParseRule(Precedence.None, LiteralParseFn, null), // LiteralChar
 
             new ParseRule(Precedence.None, IdentifierParseFn, null), // Identifier
 
             new ParseRule(Precedence.None, null, null), // KeywordVar
+            new ParseRule(Precedence.None, null, null), // KeywordConst
+            new ParseRule(Precedence.None, null, null), // KeywordFn
             new ParseRule(Precedence.None, null, null), // KeywordEnd
             new ParseRule(Precedence.None, null, null), // KeywordIf
             new ParseRule(Precedence.None, null, null), // KeywordElif
             new ParseRule(Precedence.None, null, null), // KeywordElse
             new ParseRule(Precedence.None, null, null), // KeywordWhile
+            new ParseRule(Precedence.None, null, null), // KeywordBreak
+            new ParseRule(Precedence.None, null, null), // KeywordContinue
+            new ParseRule(Precedence.None, null, null), // KeywordReturn
 
             new ParseRule(Precedence.Term, null, BinaryParseFn), // OpPlus
+            new ParseRule(Precedence.Term, UnaryParseFn, BinaryParseFn), // OpDash
+            new ParseRule(Precedence.Factor, null, BinaryParseFn), // OpStar
+            new ParseRule(Precedence.Factor, null, BinaryParseFn), // OpSlash
             new ParseRule(Precedence.Assignment, null, AssigmentParseFn), // OpEqual
             new ParseRule(Precedence.Equality, null, BinaryParseFn), // OpDoubleEqual
         };
@@ -66,7 +85,10 @@ namespace CustomProject
         }
 
         private List<Token> tokens;
+        private bool error;
         private int peekIndex;
+        private int loopDepth;
+        private int lambdaDepth;
         private IAST ast;
 
         private Token Previous { get => tokens[peekIndex - 1]; }
@@ -85,7 +107,10 @@ namespace CustomProject
         public Parser()
         {
             tokens = new List<Token>();
+            error = false;
             peekIndex = 0;
+            loopDepth = 0;
+            lambdaDepth = 0;
         }
 
         private void Advance()
@@ -96,9 +121,19 @@ namespace CustomProject
             }
         }
 
+        private void HandleError(Exception err)
+        {
+            error = true;
+            Console.WriteLine(err.Message);
+            while (!CheckPrevious(Token.Kind.EndStatement) && !Check(Token.Kind.EOF))
+            {
+                Advance();
+            }
+        }
+
         private bool Check(Token.Kind kind)
         {
-            return Current.kind == kind || Current.kind == Token.Kind.EOF;
+            return Current.kind == kind;
         }
 
         private bool CheckPrevious(Token.Kind kind)
@@ -137,8 +172,6 @@ namespace CustomProject
             this.tokens = tokens;
             List<IAST> program = new List<IAST>();
 
-            bool error = false;
-
             while (!Check(Token.Kind.EOF))
             {
                 try
@@ -148,12 +181,7 @@ namespace CustomProject
                 }
                 catch (Exception e)
                 {
-                    error = true;
-                    Console.WriteLine(e.Message);
-                    while (!CheckPrevious(Token.Kind.EndStatement))
-                    {
-                        Advance();
-                    }
+                    HandleError(e);
                 }
             }
 
@@ -169,7 +197,15 @@ namespace CustomProject
         {
             if (Next(Token.Kind.KeywordVar))
             {
-                ParseVariableInstantiation();
+                ParseVariableInstantiation(InstantiationKind.Variable);
+            }
+            else if (Next(Token.Kind.KeywordConst))
+            {
+                ParseVariableInstantiation(InstantiationKind.Constant);
+            }
+            else if (Next(Token.Kind.KeywordFn))
+            {
+                ParseFunctionDeclaration();
             }
             else
             {
@@ -188,10 +224,48 @@ namespace CustomProject
             {
                 ParseWhileStatement();
             }
+            else if (Next(Token.Kind.KeywordBreak))
+            {
+                Assert(loopDepth != 0, "Encountered 'break' statement outside of a loop.");
+                ParseBreakStatement();
+            }
+            else if (Next(Token.Kind.KeywordContinue))
+            {
+                Assert(loopDepth != 0, "Encountered 'continue' statement outside of a loop.");
+                ParseContinueStatement();
+            }
+            else if (Next(Token.Kind.KeywordReturn))
+            {
+                Assert(lambdaDepth != 0, "Encountered 'return' statement outside of function.");
+                ParseReturnStatement();
+            }
             else
             {
                 ParseExpression();
             }
+        }
+
+        private void ParseBreakStatement()
+        {
+            ast = new BreakStatement();
+        }
+
+        private void ParseContinueStatement()
+        {
+            ast = new ContinueStatement();
+        }
+
+        private void ParseReturnStatement()
+        {
+            IAST expr = null;
+
+            if (!Check(Token.Kind.EndStatement))
+            {
+                ParseExpression();
+                expr = ast;
+            }
+
+            ast = new ReturnStatement(expr);
         }
 
         private void ParseExpression()
@@ -219,26 +293,66 @@ namespace CustomProject
         private void ParseBlock()
         {
             Block block = new Block();
-            while (!Check(Token.Kind.KeywordEnd))
+            while (!Check(Token.Kind.KeywordEnd) && !Check(Token.Kind.EOF))
             {
-                ParseDeclaration();
-                block.AddExpression(ast);
+                try
+                {
+                    ParseDeclaration();
+                    block.AddExpression(ast);
+                }
+                catch (Exception e)
+                {
+                    HandleError(e);
+                }
             }
-            Expect(Token.Kind.KeywordEnd, "Expected 'end' keyword to finish block.");
+            Expect(Token.Kind.KeywordEnd, "Expected 'end' keyword to terminate block.");
             ast = block;
         }
 
-        private void ParseVariableInstantiation()
+        private void ParseVariableInstantiation(InstantiationKind instKind)
         {
-            Expect(Token.Kind.Identifier, "Expected an identifier after 'var' keyword.");
+            Expect(Token.Kind.Identifier, "Expected an identifier after '{0}' keyword.",
+                instKind == InstantiationKind.Variable ? "var" : "const");
             string id = Previous.source;
 
-            Expect(Token.Kind.OpEqual, "Expected '=' after identifer.");
+            if (instKind == InstantiationKind.Variable && Check(Token.Kind.EndStatement))
+            {
+                ast = new VariableDeclaration(id);
+                return;
+            }
+            else
+            {
+                Expect(Token.Kind.OpEqual, "Expected '=' after identifer.");
+            }
 
             ParseExpression();
             IAST initilizer = ast;
 
-            ast = new VariableInstantiation(id, initilizer);
+            switch (instKind)
+            {
+                case InstantiationKind.Variable:
+                    ast = new VariableInstantiation(id, initilizer);
+                    break;
+
+                case InstantiationKind.Constant:
+                    ast = new ConstantInstantiation(id, initilizer);
+                    break;
+
+                default:
+                    Error("Unknown InstantionKind: {0}", instKind);
+                    break;
+            }
+        }
+
+        private static void GroupParseFn(Parser parser)
+        {
+            parser.ParseGroup();
+        }
+
+        private void ParseGroup()
+        {
+            ParseExpression();
+            Expect(Token.Kind.DelimCloseParenthesis, "Expected ')' to terminate parenthesised expression.");
         }
 
         private static void LiteralParseFn(Parser parser)
@@ -261,6 +375,26 @@ namespace CustomProject
             ast = new Identifier(Previous.source);
         }
 
+        private static void UnaryParseFn(Parser parser)
+        {
+            parser.ParseUnary();
+        }
+
+        private void ParseUnary()
+        {
+            Token op = Previous;
+
+            ParsePrecedence(Precedence.Unary);
+            IAST expr = ast;
+
+            switch (op.kind)
+            {
+                case Token.Kind.OpDash:
+                    ast = new Negation(expr);
+                    break;
+            }
+        }
+
         private static void BinaryParseFn(Parser parser)
         {
             parser.ParseBinary();
@@ -280,6 +414,18 @@ namespace CustomProject
             {
                 case Token.Kind.OpPlus:
                     ast = new Addition(lhs, rhs);
+                    break;
+
+                case Token.Kind.OpDash:
+                    ast = new Subtraction(lhs, rhs);
+                    break;
+
+                case Token.Kind.OpStar:
+                    ast = new Multiplication(lhs, rhs);
+                    break;
+
+                case Token.Kind.OpSlash:
+                    ast = new Division(lhs, rhs);
                     break;
 
                 case Token.Kind.OpDoubleEqual:
@@ -309,6 +455,52 @@ namespace CustomProject
             ast = new VariableAssignment(id, assigner);
         }
 
+        private static void InvokeParseFn(Parser parser)
+        {
+            parser.ParseInvocation();
+        }
+
+        private void ParseInvocation()
+        {
+            IAST lhs = ast;
+
+            Block args = new Block();
+            do
+            {
+                ParseExpression();
+                args.AddExpression(ast);
+            } while (Next(Token.Kind.Comma) && !Check(Token.Kind.EOF));
+            Expect(Token.Kind.DelimCloseParenthesis, "Expected ')' after invocation.");
+
+            ast = new Invocation(lhs, args);
+        }
+
+        private void ParseFunctionDeclaration()
+        {
+            lambdaDepth++;
+
+            Expect(Token.Kind.Identifier, "Expected identifier after 'fn' keyword.");
+            string id = Previous.source;
+
+            Expect(Token.Kind.DelimOpenParenthesis, "Expected '(' after identifier.");
+            List<string> args = new List<string>();
+            do
+            {
+                Expect(Token.Kind.Identifier, "Expected argument identifier.");
+                args.Add(Previous.source);
+            } while (Next(Token.Kind.Comma) && !Check(Token.Kind.EOF));
+            Expect(Token.Kind.DelimCloseParenthesis, "Expected ')' to terminate argument list.");
+
+            Expect(Token.Kind.EndStatement, "Body of function must be on subsequent lines.");
+            ParseBlock();
+            Block body = ast as Block;
+
+            var lambda = new LambdaExpression(args, body, id);
+            ast = new ConstantInstantiation(id, lambda);
+
+            lambdaDepth--;
+        }
+
         private void ParseIfStatement()
         {
             ParseExpression();
@@ -320,10 +512,18 @@ namespace CustomProject
 
             while (!Check(Token.Kind.KeywordEnd) &&
                 !Check(Token.Kind.KeywordElif) &&
-                !Check(Token.Kind.KeywordElse))
+                !Check(Token.Kind.KeywordElse) &&
+                !Check(Token.Kind.EOF))
             {
-                ParseDeclaration();
-                then.AddExpression(ast);
+                try
+                {
+                    ParseDeclaration();
+                    then.AddExpression(ast);
+                }
+                catch (Exception e)
+                {
+                    HandleError(e);
+                }
             }
 
             IAST @else = null;
@@ -348,14 +548,18 @@ namespace CustomProject
 
         private void ParseWhileStatement()
         {
+            loopDepth++;
+
             ParseExpression();
             IAST cond = ast;
 
-            Expect(Token.Kind.EndStatement, "Body of 'if' statement must be on subsequent lines.");
+            Expect(Token.Kind.EndStatement, "Body of 'while' statement must be on subsequent lines.");
             ParseBlock();
             Block body = ast as Block;
 
             ast = new WhileStatement(cond, body);
+
+            loopDepth--;
         }
     }
 }

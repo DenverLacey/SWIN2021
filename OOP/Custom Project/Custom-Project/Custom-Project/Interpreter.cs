@@ -15,6 +15,7 @@ namespace CustomProject
             tokeniser = new Tokeniser();
             parser = new Parser();
             vm = new VM();
+            vm.SetEnvironment(null, vm);
 
             string source = GetSourceCode(filepath);
 
@@ -23,9 +24,16 @@ namespace CustomProject
 
             vm.Execute(program);
 
+            Console.WriteLine("Variables:");
             foreach (var binding in vm.Variables)
             {
-                Console.WriteLine("{0}: {1}", binding.Key, binding.Value);
+                Console.WriteLine("{0}: {1} = {2}", binding.Key, binding.Value.Type, binding.Value);
+            }
+
+            Console.WriteLine("\nConstants:");
+            foreach (var binding in vm.Constants)
+            {
+                Console.WriteLine("{0}: {1} = {2}", binding.Key, binding.Value.Type, binding.Value);
             }
         }
 

@@ -25,23 +25,24 @@ namespace CustomProject
 
     public class Block : IAST
     {
-        List<IAST> exprs;
+        public List<IAST> Expressions { get; private set; }
 
         public Block()
         {
-            exprs = new List<IAST>();
+            Expressions = new List<IAST>();
         }
 
         public void AddExpression(IAST expr)
         {
-            exprs.Add(expr);
+            Expressions.Add(expr);
         }
 
         public Value Execute(VM vm)
         {
-            foreach (IAST expr in exprs)
+            VM scope = new VM(vm, vm.Global);
+            foreach (IAST expr in Expressions)
             {
-                expr.Execute(vm);
+                expr.Execute(scope);
             }
             return new NilValue();
         }
@@ -58,25 +59,78 @@ namespace CustomProject
 
         public Value Execute(VM vm)
         {
-            return vm.Variables[Id];
+            if (vm.Variables.ContainsKey(Id))
+            {
+                return vm.Variables[Id];
+            }
+            else if (vm.Constants.ContainsKey(Id))
+            {
+                return vm.Constants[Id];
+            }
+            else if (vm.Parent != null)
+            {
+                return Execute(vm.Parent);
+            }
+            else if (vm.Global.Variables.ContainsKey(Id))
+            {
+                return vm.Global.Variables[Id];
+            }
+            else if (vm.Global.Constants.ContainsKey(Id))
+            {
+                return vm.Global.Constants[Id];
+            }
+            else
+            {
+                throw new Exception(string.Format("Unresolved identifier '{0}'.", Id));
+            }
         }
     }
 
-    public class VariableInstantiation : IAST
+    public class VariableDeclaration : IAST
     {
-        string id;
-        IAST initializer;
+        protected string id;
 
-        public VariableInstantiation(string id, IAST initializer)
+        public VariableDeclaration(string id)
         {
             this.id = id;
+        }
+
+        public virtual Value Execute(VM vm)
+        {
+            vm.Variables.Add(id, new NilValue());
+            return new NilValue();
+        }
+    }
+
+    public class VariableInstantiation : VariableDeclaration
+    {
+        protected IAST initializer;
+
+        public VariableInstantiation(string id, IAST initializer)
+            : base(id)
+        {
             this.initializer = initializer;
         }
 
-        public Value Execute(VM vm)
+        public override Value Execute(VM vm)
         {
             Value value = initializer.Execute(vm);
             vm.Variables.Add(id, value);
+            return new NilValue();
+        }
+    }
+
+    public class ConstantInstantiation : VariableInstantiation
+    {
+        public ConstantInstantiation(string id, IAST initializer)
+            : base(id, initializer)
+        {
+        }
+
+        public override Value Execute(VM vm)
+        {
+            Value value = initializer.Execute(vm);
+            vm.Constants.Add(id, value);
             return new NilValue();
         }
     }
@@ -94,7 +148,36 @@ namespace CustomProject
 
         public Value Execute(VM vm)
         {
-            vm.Variables[id] = assigner.Execute(vm);
+            return DoExecute(vm, vm);
+        }
+
+        private Value DoExecute(VM vm, VM lookup)
+        {
+            if (lookup.Variables.ContainsKey(id))
+            {
+                lookup.Variables[id] = assigner.Execute(vm);
+            }
+            else if (lookup.Parent != null)
+            {
+                return DoExecute(vm, lookup.Parent);
+            }
+            else if (vm.Global.Variables.ContainsKey(id))
+            {
+                vm.Global.Variables[id] = assigner.Execute(vm);
+            }
+            else
+            {
+                string errMessage;
+                if (vm.Constants.ContainsKey(id))
+                {
+                    errMessage = string.Format("Attempt to assign to constant '{0}'.", id);
+                }
+                else
+                {
+                    errMessage = string.Format("Unresolved identifier '{0}'.", id);
+                }
+                throw new Exception(errMessage);
+            }
             return new NilValue();
         }
     }
@@ -157,11 +240,75 @@ namespace CustomProject
                 Value condValue = cond.Execute(vm);
                 Value.AssertType(Value.ValueType.Boolean, condValue,
                     "Condition of 'while' statement must be 'Boolean' but was given '{0}'.", condValue.Type);
+
                 if (!condValue.GetBoolean())
                     break;
-                body.Execute(vm);
+
+                try
+                {
+                    body.Execute(vm);
+                }
+                catch (ContinueStatement.Signal)
+                {
+                    continue;
+                }
+                catch (BreakStatement.Signal)
+                {
+                    break;
+                }
             }
             return new NilValue();
+        }
+    }
+
+    public class BreakStatement : IAST
+    {
+        public BreakStatement()
+        {
+        }
+
+        public class Signal : Exception
+        {
+        }
+
+        public Value Execute(VM vm)
+        {
+            throw new Signal();
+        }
+    }
+
+    public class ContinueStatement : IAST
+    {
+        public ContinueStatement()
+        {
+        }
+
+        public class Signal : Exception
+        {
+        }
+
+        public Value Execute(VM vm)
+        {
+            throw new Signal();
+        }
+    }
+
+    public class LambdaExpression : IAST
+    {
+        public List<string> Args { get; private set; }
+        public Block Body { get; private set; }
+        public string Id { get; private set; }
+
+        public LambdaExpression(List<string> args, Block body, string id = "<LAMBDA>")
+        {
+            Args = args;
+            Body = body;
+            Id = id;
+        }
+
+        public Value Execute(VM vm)
+        {
+            return new LambdaValue(this);
         }
     }
 }
