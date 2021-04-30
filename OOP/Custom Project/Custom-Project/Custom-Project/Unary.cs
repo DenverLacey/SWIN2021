@@ -13,6 +13,24 @@ namespace CustomProject
         public abstract Value Execute(VM vm);
     }
 
+    public class Not : Unary
+    {
+        public Not(IAST expr)
+            : base(expr)
+        {
+        }
+
+        public override Value Execute(VM vm)
+        {
+            Value a = Expr.Execute(vm);
+
+            Value.AssertType(Value.ValueType.Boolean, a,
+                "Operand of '!' expected to be 'Boolean' but was given '{0}'.", a.Type);
+
+            return new BooleanValue(!a.Boolean);
+        }
+    }
+
     public class Negation : Unary
     {
         public Negation(IAST expr)
@@ -27,7 +45,7 @@ namespace CustomProject
             Value.AssertType(Value.ValueType.Number, a,
                 "Argument to unary '-' expected to be 'Number' but was given '{0}'.", a.Type);
 
-            float numA = a.GetNumber();
+            float numA = a.Number;
             float numR = -numA;
 
             return new NumberValue(numR);

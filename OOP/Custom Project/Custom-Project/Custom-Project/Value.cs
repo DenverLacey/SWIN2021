@@ -64,64 +64,34 @@ namespace CustomProject
             return false;
         }
 
-        public virtual bool GetBoolean()
+        public virtual bool Boolean
         {
-            throw new Exception("Value is not a boolean.");
+            get => throw new Exception("Value is not a boolean.");
         }
 
-        public virtual void SetBoolean(bool value)
+        public virtual float Number
         {
-            throw new Exception("Value is not a boolean.");
+            get => throw new Exception("Value is not a boolean.");
         }
 
-        public virtual float GetNumber()
+        public virtual string String
         {
-            throw new Exception("Value is not a number.");
+            get => throw new Exception("Value is not a boolean.");
         }
 
-        public virtual void SetNumber(float value)
+        public virtual char Char
         {
-            throw new Exception("Value is not a number.");
+            get => throw new Exception("Value is not a boolean.");
         }
 
-        public virtual string GetString()
+        public virtual LambdaExpression Lambda
         {
-            throw new Exception("Value is not a string.");
+            get => throw new Exception("Value is not a boolean.");
         }
 
-        public virtual void SetString(string value)
+        public virtual List<Value> List
         {
-            throw new Exception("Value is not a string.");
-        }
-
-        public virtual char GetChar()
-        {
-            throw new Exception("Value is not a char.");
-        }
-
-        public virtual void SetChar(char value)
-        {
-            throw new Exception("Value is not a char.");
-        }
-
-        public virtual LambdaExpression GetLambda()
-        {
-            throw new Exception("Value is not a lambda.");
-        }
-
-        public virtual void SetLambda(LambdaExpression value)
-        {
-            throw new Exception("Value is not a lambda.");
-        }
-
-        public virtual List<Value> GetList()
-        {
-            throw new Exception("Value is not a list.");
-        }
-
-        public virtual void SetList(List<Value> value)
-        {
-            throw new Exception("Value is not a list.");
+            get => throw new Exception("Value is not a boolean.");
         }
     }
 
@@ -151,6 +121,7 @@ namespace CustomProject
     public class BooleanValue : Value
     {
         private bool value;
+        public override bool Boolean { get => value; }
 
         public BooleanValue(bool value)
             : base(ValueType.Boolean)
@@ -160,17 +131,7 @@ namespace CustomProject
 
         public override bool UncheckedEqual(Value other)
         {
-            return value == other.GetBoolean();
-        }
-
-        public override bool GetBoolean()
-        {
-            return value;
-        }
-
-        public override void SetBoolean(bool value)
-        {
-            this.value = value;
+            return value == other.Boolean;
         }
 
         public override string ToString()
@@ -182,6 +143,7 @@ namespace CustomProject
     public class NumberValue : Value
     {
         private float value;
+        public override float Number { get => value; }
 
         public NumberValue(float value)
             : base(ValueType.Number)
@@ -191,17 +153,7 @@ namespace CustomProject
 
         public override bool UncheckedEqual(Value other)
         {
-            return value == other.GetNumber();
-        }
-
-        public override float GetNumber()
-        {
-            return value;
-        }
-
-        public override void SetNumber(float value)
-        {
-            this.value = value;
+            return value == other.Number;
         }
 
         public override string ToString()
@@ -213,6 +165,7 @@ namespace CustomProject
     public class StringValue : Value
     {
         private string value;
+        public override string String { get => value; }
 
         public StringValue(string value)
             : base(ValueType.String)
@@ -222,17 +175,7 @@ namespace CustomProject
 
         public override bool UncheckedEqual(Value other)
         {
-            return value == other.GetString();
-        }
-
-        public override string GetString()
-        {
-            return value;
-        }
-
-        public override void SetString(string value)
-        {
-            this.value = value;
+            return value == other.String;
         }
 
         public override string ToString()
@@ -244,6 +187,7 @@ namespace CustomProject
     public class CharValue : Value
     {
         private char value;
+        public override char Char { get => value; }
 
         public CharValue(char value)
             : base(ValueType.Char)
@@ -253,17 +197,7 @@ namespace CustomProject
 
         public override bool UncheckedEqual(Value other)
         {
-            return value == other.GetChar();
-        }
-
-        public override char GetChar()
-        {
-            return value;
-        }
-
-        public override void SetChar(char value)
-        {
-            this.value = value;
+            return value == other.Char;
         }
 
         public override string ToString()
@@ -275,6 +209,7 @@ namespace CustomProject
     public class LambdaValue : Value
     {
         private LambdaExpression value;
+        public override LambdaExpression Lambda { get => value; }
 
         public LambdaValue(LambdaExpression value)
             : base(ValueType.Lambda)
@@ -284,17 +219,7 @@ namespace CustomProject
 
         public override bool UncheckedEqual(Value other)
         {
-            return value == other.GetLambda();
-        }
-
-        public override LambdaExpression GetLambda()
-        {
-            return value;
-        }
-
-        public override void SetLambda(LambdaExpression value)
-        {
-            this.value = value;
+            return value == other.Lambda;
         }
 
         public override string ToString()
@@ -316,6 +241,7 @@ namespace CustomProject
     public class ListValue : Value
     {
         private List<Value> value;
+        public override List<Value> List { get => value; }
 
         public ListValue(List<Value> value)
             : base(ValueType.List)
@@ -325,7 +251,7 @@ namespace CustomProject
 
         public override bool UncheckedEqual(Value other)
         {
-            List<Value> otherList = other.GetList();
+            List<Value> otherList = other.List;
             if (value.Count != otherList.Count)
             {
                 return false;
@@ -338,16 +264,6 @@ namespace CustomProject
                 }
             }
             return true;
-        }
-
-        public override List<Value> GetList()
-        {
-            return value;
-        }
-
-        public override void SetList(List<Value> value)
-        {
-            this.value = value;
         }
 
         public override string ToString()

@@ -50,8 +50,8 @@ namespace CustomProject
             Value.AssertType(Value.ValueType.Number, b,
                 "Second argument to '+' expected to be 'Number' but was given '{0}'.", b.Type);
 
-            float numA = a.GetNumber();
-            float numB = b.GetNumber();
+            float numA = a.Number;
+            float numB = b.Number;
             float numR = numA + numB;
 
             return new NumberValue(numR);
@@ -75,8 +75,8 @@ namespace CustomProject
             Value.AssertType(Value.ValueType.Number, b,
                 "Second argument to '-' expected to be 'Number' but was given '{0}'.", b.Type);
 
-            float numA = a.GetNumber();
-            float numB = b.GetNumber();
+            float numA = a.Number;
+            float numB = b.Number;
             float numR = numA - numB;
 
             return new NumberValue(numR);
@@ -100,8 +100,8 @@ namespace CustomProject
             Value.AssertType(Value.ValueType.Number, b,
                 "Second argument to '*' expected to be 'Number' but was given '{0}'.", b.Type);
 
-            float numA = a.GetNumber();
-            float numB = b.GetNumber();
+            float numA = a.Number;
+            float numB = b.Number;
             float numR = numA * numB;
 
             return new NumberValue(numR);
@@ -125,11 +125,113 @@ namespace CustomProject
             Value.AssertType(Value.ValueType.Number, b,
                 "Second argument to '/' expected to be 'Number' but was given '{0}'.", b.Type);
 
-            float numA = a.GetNumber();
-            float numB = b.GetNumber();
+            float numA = a.Number;
+            float numB = b.Number;
             float numR = numA / numB;
 
             return new NumberValue(numR);
+        }
+    }
+
+    public class Or : Binary
+    {
+        public Or(IAST lhs, IAST rhs)
+            : base(lhs, rhs)
+        {
+        }
+
+        public override Value Execute(VM vm)
+        {
+            Value a = Lhs.Execute(vm);
+            Value.AssertType(Value.ValueType.Boolean, a,
+                "First operand of 'or' expected to be 'Boolean' but was given '{0}'.", a.Type);
+            bool boolA = a.Boolean;
+
+            if (boolA)
+            {
+                return new BooleanValue(boolA);
+            }
+
+
+            Value b = Rhs.Execute(vm);
+            Value.AssertType(Value.ValueType.Boolean, b,
+                "Second operand of 'or' expected to be 'Boolean' but was given '{0}'.", b.Type);
+            return new BooleanValue(b.Boolean);
+        }
+    }
+
+    public class And : Binary
+    {
+        public And(IAST lhs, IAST rhs)
+            : base(lhs, rhs)
+        {
+        }
+
+        public override Value Execute(VM vm)
+        {
+            Value a = Lhs.Execute(vm);
+            Value.AssertType(Value.ValueType.Boolean, a,
+                "First operand of 'or' expected to be 'Boolean' but was given '{0}'.", a.Type);
+            bool boolA = a.Boolean;
+
+            if (!boolA)
+            {
+                return new BooleanValue(boolA);
+            }
+
+
+            Value b = Rhs.Execute(vm);
+            Value.AssertType(Value.ValueType.Boolean, b,
+                "Second operand of 'or' expected to be 'Boolean' but was given '{0}'.", b.Type);
+            return new BooleanValue(b.Boolean);
+        }
+    }
+
+    public class LessThan : Binary
+    {
+        public LessThan(IAST lhs, IAST rhs)
+            : base(lhs, rhs)
+        {
+        }
+
+        public override Value Execute(VM vm)
+        {
+            Value a = Lhs.Execute(vm);
+            Value b = Rhs.Execute(vm);
+
+            Value.AssertType(Value.ValueType.Number, a,
+                "First operand of '<' expected to be 'Number' but was given '{0}'.", a.Type);
+            Value.AssertType(Value.ValueType.Number, b,
+                "Second operand of '<' expected to be 'Number' but was given '{0}'.", b.Type);
+
+            float numA = a.Number;
+            float numB = b.Number;
+
+            return new BooleanValue(numA < numB);
+        }
+    }
+
+    public class GreaterThan : Binary
+    {
+        public GreaterThan(IAST lhs, IAST rhs)
+            : base(lhs, rhs)
+        {
+        }
+
+        public override Value Execute(VM vm)
+        {
+            Value a = Lhs.Execute(vm);
+            Value b = Rhs.Execute(vm);
+
+            Value.AssertType(Value.ValueType.Number, a,
+                "First operand of '>' expected to be 'Number' but was given '{0}'.", a.Type);
+            Value.AssertType(Value.ValueType.Number, b,
+                "Second operand of '>' expected to be 'Number' but was given '{0}'.", b.Type);
+
+            float numA = a.Number;
+            float numB = b.Number;
+
+            return new BooleanValue(numA > numB);
         }
     }
 
@@ -150,8 +252,8 @@ namespace CustomProject
             Value.AssertType(Value.ValueType.Number, idx,
                 "Second operand to '[]' expected to be 'Number' but was given '{0}'.", idx.Type);
 
-            List<Value> values = list.GetList();
-            float i = idx.GetNumber();
+            List<Value> values = list.List;
+            float i = idx.Number;
 
             return values[(int)i];
         }
@@ -179,7 +281,7 @@ namespace CustomProject
 
         private Value InvokeLambda(VM vm, LambdaValue value)
         {
-            LambdaExpression lambda = value.GetLambda();
+            LambdaExpression lambda = value.Lambda;
             Block args = Rhs as Block;
             if (args == null)
             {
@@ -203,19 +305,16 @@ namespace CustomProject
                 @new.Variables.Add(argId, arg);
             }
 
-            Value ret = new NilValue();
-            foreach (IAST expression in lambda.Body.Expressions)
+            Value ret;
+            try
             {
-                try
-                {
-                    ret = expression.Execute(@new);
-                }
-                catch (ReturnStatement.Signal sig)
-                {
-                    ret = sig.Value;
-                    break;
-                }
+                ret = lambda.Body.Execute(@new);
             }
+            catch (ReturnStatement.Signal sig)
+            {
+                ret = sig.Value;
+            }
+            
 
             return ret;
         }

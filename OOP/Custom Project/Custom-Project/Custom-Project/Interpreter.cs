@@ -6,20 +6,20 @@ namespace CustomProject
 {
     public class Interpreter
     {
-        private Tokeniser tokeniser;
+        private Tokenizer tokenizer;
         private Parser parser;
         private VM vm;
 
         public Interpreter(string filepath)
         {
-            tokeniser = new Tokeniser();
+            tokenizer = new Tokenizer();
             parser = new Parser();
             vm = new VM();
             vm.SetEnvironment(null, vm);
 
             string source = GetSourceCode(filepath);
 
-            var tokens = tokeniser.Tokenize(source);
+            var tokens = tokenizer.Tokenize(source);
             var program = parser.Parse(tokens);
 
             vm.Execute(program);

@@ -40,11 +40,12 @@ namespace CustomProject
         public virtual Value Execute(VM vm)
         {
             VM scope = new VM(vm, vm.Global);
+            Value ret = new NilValue();
             foreach (IAST expr in Expressions)
             {
-                expr.Execute(scope);
+                ret = expr.Execute(scope);
             }
-            return new NilValue();
+            return ret;
         }
     }
 
@@ -218,8 +219,8 @@ namespace CustomProject
             Value.AssertType(Value.ValueType.Number, idx,
                 "Second operand of '[]' expected to be 'Number' but was given '{0}'.", idx.Type);
 
-            List<Value> values = listVal.GetList();
-            float i = idx.GetNumber();
+            List<Value> values = listVal.List;
+            float i = idx.Number;
 
             values[(int)i] = assigner.Execute(vm);
 
@@ -245,7 +246,7 @@ namespace CustomProject
             Value condValue = cond.Execute(vm);
             Value.AssertType(Value.ValueType.Boolean, condValue,
                 "Condition of 'if' statement must be 'Boolean' but was given '{0}'.", condValue.Type);
-            if (condValue.GetBoolean())
+            if (condValue.Boolean)
             {
                 then.Execute(vm);
                 return true;
@@ -286,7 +287,7 @@ namespace CustomProject
                 Value.AssertType(Value.ValueType.Boolean, condValue,
                     "Condition of 'while' statement must be 'Boolean' but was given '{0}'.", condValue.Type);
 
-                if (!condValue.GetBoolean())
+                if (!condValue.Boolean)
                     break;
 
                 try

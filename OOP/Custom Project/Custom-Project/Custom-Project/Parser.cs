@@ -9,9 +9,10 @@ namespace CustomProject
         {
             None,
             Assignment, // =
-            Or,         // ||
-            And,        // &&
+            Or,         // or
+            And,        // and
             Equality,   // == !=
+            Comparison, // < > <= >=
             Term,       // + -
             Factor,     // * / %
             Unary,      // !
@@ -74,12 +75,20 @@ namespace CustomProject
             new ParseRule(Precedence.None, null, null), // KeywordReturn
             new ParseRule(Precedence.None, null, null), // KeywordPrint
 
+            new ParseRule(Precedence.Unary, UnaryParseFn, null), // OpBang
             new ParseRule(Precedence.Term, null, BinaryParseFn), // OpPlus
             new ParseRule(Precedence.Term, UnaryParseFn, BinaryParseFn), // OpDash
             new ParseRule(Precedence.Factor, null, BinaryParseFn), // OpStar
             new ParseRule(Precedence.Factor, null, BinaryParseFn), // OpSlash
             new ParseRule(Precedence.Assignment, null, AssigmentParseFn), // OpEqual
             new ParseRule(Precedence.Equality, null, BinaryParseFn), // OpDoubleEqual
+            new ParseRule(Precedence.Equality, null, BinaryParseFn), // OpBangEqual
+            new ParseRule(Precedence.Or, null, BinaryParseFn), // OpOr
+            new ParseRule(Precedence.And, null, BinaryParseFn), // OrAnd
+            new ParseRule(Precedence.Comparison, null, BinaryParseFn), // OpLeftAngle
+            new ParseRule(Precedence.Comparison, null, BinaryParseFn), // OpRightAngle
+            new ParseRule(Precedence.Comparison, null, BinaryParseFn), // OpLeftAngleEqual
+            new ParseRule(Precedence.Comparison, null, BinaryParseFn), // OpRightAngleEqual
         };
 
         private static ParseRule GetRule(Token.Kind kind)
@@ -402,6 +411,9 @@ namespace CustomProject
 
             switch (op.kind)
             {
+                case Token.Kind.OpBang:
+                    ast = new Not(expr);
+                    break;
                 case Token.Kind.OpDash:
                     ast = new Negation(expr);
                     break;
@@ -443,6 +455,34 @@ namespace CustomProject
 
                 case Token.Kind.OpDoubleEqual:
                     ast = new Equality(lhs, rhs);
+                    break;
+
+                case Token.Kind.OpBangEqual:
+                    ast = new Not(new Equality(lhs, rhs));
+                    break;
+
+                case Token.Kind.OpOr:
+                    ast = new Or(lhs, rhs);
+                    break;
+
+                case Token.Kind.OpAnd:
+                    ast = new And(lhs, rhs);
+                    break;
+
+                case Token.Kind.OpLeftAngle:
+                    ast = new LessThan(lhs, rhs);
+                    break;
+
+                case Token.Kind.OpRightAngle:
+                    ast = new GreaterThan(lhs, rhs);
+                    break;
+
+                case Token.Kind.OpLeftAngleEqual:
+                    ast = new Not(new GreaterThan(lhs, rhs));
+                    break;
+
+                case Token.Kind.OpRightAngleEqual:
+                    ast = new Not(new LessThan(lhs, rhs));
                     break;
 
                 case Token.Kind.DelimOpenBracket:
@@ -523,12 +563,16 @@ namespace CustomProject
             IAST lhs = ast;
 
             Block args = new Block();
-            do
+
+            if (!Next(Token.Kind.DelimCloseParenthesis))
             {
-                ParseExpression();
-                args.AddExpression(ast);
-            } while (Next(Token.Kind.Comma) && !Check(Token.Kind.EOF));
-            Expect(Token.Kind.DelimCloseParenthesis, "Expected ')' after invocation.");
+                do
+                {
+                    ParseExpression();
+                    args.AddExpression(ast);
+                } while (Next(Token.Kind.Comma) && !Check(Token.Kind.EOF));
+                Expect(Token.Kind.DelimCloseParenthesis, "Expected ')' after invocation.");
+            }
 
             ast = new Invocation(lhs, args);
         }
@@ -542,12 +586,16 @@ namespace CustomProject
 
             Expect(Token.Kind.DelimOpenParenthesis, "Expected '(' after identifier.");
             List<string> args = new List<string>();
-            do
+
+            if (!Next(Token.Kind.DelimCloseParenthesis))
             {
-                Expect(Token.Kind.Identifier, "Expected argument identifier.");
-                args.Add(Previous.source);
-            } while (Next(Token.Kind.Comma) && !Check(Token.Kind.EOF));
-            Expect(Token.Kind.DelimCloseParenthesis, "Expected ')' to terminate argument list.");
+                do
+                {
+                    Expect(Token.Kind.Identifier, "Expected argument identifier.");
+                    args.Add(Previous.source);
+                } while (Next(Token.Kind.Comma) && !Check(Token.Kind.EOF));
+                Expect(Token.Kind.DelimCloseParenthesis, "Expected ')' to terminate argument list.");
+            }
 
             Expect(Token.Kind.EndStatement, "Body of function must be on subsequent lines.");
             ParseBlock();

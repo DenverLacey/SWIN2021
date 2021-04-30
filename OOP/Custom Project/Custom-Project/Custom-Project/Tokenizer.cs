@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Text.RegularExpressions;
 
 namespace CustomProject
 {
@@ -41,12 +40,20 @@ namespace CustomProject
             KeywordReturn,
             KeywordPrint,
 
+            OpBang,
             OpPlus,
             OpDash,
             OpStar,
             OpSlash,
             OpEqual,
             OpDoubleEqual,
+            OpBangEqual,
+            OpOr,
+            OpAnd,
+            OpLeftAngle,
+            OpRightAngle,
+            OpLeftAngleEqual,
+            OpRightAngleEqual,
         }
 
         public Kind kind;
@@ -66,7 +73,7 @@ namespace CustomProject
         }
     }
     
-    public class Tokeniser
+    public class Tokenizer
     {
         private string source;
         private int tokenStart;
@@ -119,7 +126,7 @@ namespace CustomProject
             }
         }
 
-        public Tokeniser()
+        public Tokenizer()
         {
             source = null;
             tokenStart = 0;
@@ -291,6 +298,14 @@ namespace CustomProject
                     value = new BooleanValue(false);
                     break;
 
+                case "or":
+                    kind = Token.Kind.OpOr;
+                    break;
+
+                case "and":
+                    kind = Token.Kind.OpAnd;
+                    break;
+
                 case "var":
                     kind = Token.Kind.KeywordVar;
                     break;
@@ -370,6 +385,17 @@ namespace CustomProject
                     kind = Token.Kind.DelimCloseBracket;
                     break;
 
+                case '!':
+                    if (CurrentChar == '=')
+                    {
+                        tokenLength++;
+                        kind = Token.Kind.OpBangEqual;
+                    }
+                    else
+                    {
+                        kind = Token.Kind.OpBang;
+                    }
+                    break;
                 case '+':
                     kind = Token.Kind.OpPlus;
                     break;
@@ -391,6 +417,28 @@ namespace CustomProject
                     else
                     {
                         kind = Token.Kind.OpEqual;
+                    }
+                    break;
+                case '<':
+                    if (CurrentChar == '=')
+                    {
+                        tokenLength++;
+                        kind = Token.Kind.OpLeftAngleEqual;
+                    }
+                    else
+                    {
+                        kind = Token.Kind.OpLeftAngle;
+                    }
+                    break;
+                case '>':
+                    if (CurrentChar == '=')
+                    {
+                        tokenLength++;
+                        kind = Token.Kind.OpRightAngleEqual;
+                    }
+                    else
+                    {
+                        kind = Token.Kind.OpRightAngle;
                     }
                     break;
 
