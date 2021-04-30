@@ -3,11 +3,11 @@ namespace CustomProject
 {
     public abstract class Unary : IAST
     {
-        protected IAST expr;
+        public IAST Expr { get; private set; }
 
         public Unary(IAST expr)
         {
-            this.expr = expr;
+            Expr = expr;
         }
 
         public abstract Value Execute(VM vm);
@@ -22,7 +22,7 @@ namespace CustomProject
 
         public override Value Execute(VM vm)
         {
-            Value a = expr.Execute(vm);
+            Value a = Expr.Execute(vm);
 
             Value.AssertType(Value.ValueType.Number, a,
                 "Argument to unary '-' expected to be 'Number' but was given '{0}'.", a.Type);
@@ -53,11 +53,26 @@ namespace CustomProject
 
         public override Value Execute(VM vm)
         {
-            if (expr == null)
+            if (Expr == null)
             {
                 throw new Signal(new NilValue());
             }
-            throw new Signal(expr.Execute(vm));
+            throw new Signal(Expr.Execute(vm));
+        }
+    }
+
+    public class PrintStatement : Unary
+    {
+        public PrintStatement(IAST expr)
+            : base(expr)
+        {
+        }
+
+        public override Value Execute(VM vm)
+        {
+            Value value = Expr.Execute(vm);
+            Console.WriteLine(value);
+            return new NilValue();
         }
     }
 }

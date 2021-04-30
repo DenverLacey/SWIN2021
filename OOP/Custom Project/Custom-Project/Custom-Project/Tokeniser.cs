@@ -17,6 +17,8 @@ namespace CustomProject
 
             DelimOpenParenthesis,
             DelimCloseParenthesis,
+            DelimOpenBracket,
+            DelimCloseBracket,
 
             LiteralNil,
             LiteralBoolean,
@@ -37,6 +39,7 @@ namespace CustomProject
             KeywordBreak,
             KeywordContinue,
             KeywordReturn,
+            KeywordPrint,
 
             OpPlus,
             OpDash,
@@ -332,6 +335,10 @@ namespace CustomProject
                     kind = Token.Kind.KeywordReturn;
                     break;
 
+                case "print":
+                    kind = Token.Kind.KeywordPrint;
+                    break;
+
                 default:
                     kind = Token.Kind.Identifier;
                     break;
@@ -355,6 +362,12 @@ namespace CustomProject
                     break;
                 case ')':
                     kind = Token.Kind.DelimCloseParenthesis;
+                    break;
+                case '[':
+                    kind = Token.Kind.DelimOpenBracket;
+                    break;
+                case ']':
+                    kind = Token.Kind.DelimCloseBracket;
                     break;
 
                 case '+':

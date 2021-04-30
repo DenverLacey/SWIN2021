@@ -37,7 +37,7 @@ namespace CustomProject
             Expressions.Add(expr);
         }
 
-        public Value Execute(VM vm)
+        public virtual Value Execute(VM vm)
         {
             VM scope = new VM(vm, vm.Global);
             foreach (IAST expr in Expressions)
@@ -45,6 +45,19 @@ namespace CustomProject
                 expr.Execute(scope);
             }
             return new NilValue();
+        }
+    }
+
+    public class ListExpression : Block
+    {
+        public override Value Execute(VM vm)
+        {
+            List<Value> values = new List<Value>();
+            foreach (IAST element in Expressions)
+            {
+                values.Add(element.Execute(vm));
+            }
+            return new ListValue(values);
         }
     }
 
@@ -137,8 +150,8 @@ namespace CustomProject
 
     public class VariableAssignment : IAST
     {
-        string id;
-        IAST assigner;
+        protected string id;
+        protected IAST assigner;
 
         public VariableAssignment(string id, IAST assigner)
         {
@@ -146,7 +159,7 @@ namespace CustomProject
             this.assigner = assigner;
         }
 
-        public Value Execute(VM vm)
+        public virtual Value Execute(VM vm)
         {
             return DoExecute(vm, vm);
         }
@@ -178,6 +191,38 @@ namespace CustomProject
                 }
                 throw new Exception(errMessage);
             }
+            return new NilValue();
+        }
+    }
+
+    public class SubscriptAssignment : IAST
+    {
+        IAST list;
+        IAST subscript;
+        IAST assigner;
+
+        public SubscriptAssignment(IAST list, IAST subscript, IAST assigner)
+        {
+            this.list = list;
+            this.subscript = subscript;
+            this.assigner = assigner;
+        }
+
+        public Value Execute(VM vm)
+        {
+            Value listVal = list.Execute(vm);
+            Value idx = subscript.Execute(vm);
+
+            Value.AssertType(Value.ValueType.List, listVal,
+                "First operand of '[]' expected to be 'List' but was given '{0}'.", listVal.Type);
+            Value.AssertType(Value.ValueType.Number, idx,
+                "Second operand of '[]' expected to be 'Number' but was given '{0}'.", idx.Type);
+
+            List<Value> values = listVal.GetList();
+            float i = idx.GetNumber();
+
+            values[(int)i] = assigner.Execute(vm);
+
             return new NilValue();
         }
     }

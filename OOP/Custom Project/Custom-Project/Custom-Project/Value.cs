@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Text;
 
 namespace CustomProject
@@ -15,6 +16,7 @@ namespace CustomProject
             String,
             Char,
             Lambda,
+            List
         }
 
         public ValueType Type { get; protected set; }
@@ -64,12 +66,12 @@ namespace CustomProject
 
         public virtual bool GetBoolean()
         {
-            throw new Exception("Value is not a number.");
+            throw new Exception("Value is not a boolean.");
         }
 
         public virtual void SetBoolean(bool value)
         {
-            throw new Exception("Value is not a number.");
+            throw new Exception("Value is not a boolean.");
         }
 
         public virtual float GetNumber()
@@ -94,22 +96,32 @@ namespace CustomProject
 
         public virtual char GetChar()
         {
-            throw new Exception("Value is not a string.");
+            throw new Exception("Value is not a char.");
         }
 
         public virtual void SetChar(char value)
         {
-            throw new Exception("Value is not a string.");
+            throw new Exception("Value is not a char.");
         }
 
         public virtual LambdaExpression GetLambda()
         {
-            throw new Exception("Value is not a string.");
+            throw new Exception("Value is not a lambda.");
         }
 
         public virtual void SetLambda(LambdaExpression value)
         {
-            throw new Exception("Value is not a string.");
+            throw new Exception("Value is not a lambda.");
+        }
+
+        public virtual List<Value> GetList()
+        {
+            throw new Exception("Value is not a list.");
+        }
+
+        public virtual void SetList(List<Value> value)
+        {
+            throw new Exception("Value is not a list.");
         }
     }
 
@@ -297,6 +309,59 @@ namespace CustomProject
                 }
             }
             builder.Append(")");
+            return builder.ToString();
+        }
+    }
+
+    public class ListValue : Value
+    {
+        private List<Value> value;
+
+        public ListValue(List<Value> value)
+            : base(ValueType.List)
+        {
+            this.value = value;
+        }
+
+        public override bool UncheckedEqual(Value other)
+        {
+            List<Value> otherList = other.GetList();
+            if (value.Count != otherList.Count)
+            {
+                return false;
+            }
+            for (int i = 0; i < value.Count; i++)
+            {
+                if (!value[i].Equal(otherList[i]))
+                {
+                    return false;
+                }
+            }
+            return true;
+        }
+
+        public override List<Value> GetList()
+        {
+            return value;
+        }
+
+        public override void SetList(List<Value> value)
+        {
+            this.value = value;
+        }
+
+        public override string ToString()
+        {
+            StringBuilder builder = new StringBuilder("[");
+            for (int i = 0; i < value.Count; i++)
+            {
+                builder.Append(value[i].ToString());
+                if (i + 1 < value.Count)
+                {
+                    builder.Append(", ");
+                }
+            }
+            builder.Append("]");
             return builder.ToString();
         }
     }

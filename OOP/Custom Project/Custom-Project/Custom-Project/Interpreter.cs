@@ -24,7 +24,7 @@ namespace CustomProject
 
             vm.Execute(program);
 
-            Console.WriteLine("Variables:");
+            Console.WriteLine("\nVariables:");
             foreach (var binding in vm.Variables)
             {
                 Console.WriteLine("{0}: {1} = {2}", binding.Key, binding.Value.Type, binding.Value);

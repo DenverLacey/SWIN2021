@@ -50,6 +50,8 @@ namespace CustomProject
 
             new ParseRule(Precedence.Call, GroupParseFn, InvokeParseFn), // DelimOpenParenthesis
             new ParseRule(Precedence.None, null, null), // DelimCloseParenthesis
+            new ParseRule(Precedence.Call, ListParseFn, BinaryParseFn), // DelimOpenBracket
+            new ParseRule(Precedence.None, null, null), // DelimCloseBracket
 
             new ParseRule(Precedence.None, LiteralParseFn, null), // LiteralNil
             new ParseRule(Precedence.None, LiteralParseFn, null), // LiteralBoolean
@@ -70,6 +72,7 @@ namespace CustomProject
             new ParseRule(Precedence.None, null, null), // KeywordBreak
             new ParseRule(Precedence.None, null, null), // KeywordContinue
             new ParseRule(Precedence.None, null, null), // KeywordReturn
+            new ParseRule(Precedence.None, null, null), // KeywordPrint
 
             new ParseRule(Precedence.Term, null, BinaryParseFn), // OpPlus
             new ParseRule(Precedence.Term, UnaryParseFn, BinaryParseFn), // OpDash
@@ -239,6 +242,10 @@ namespace CustomProject
                 Assert(lambdaDepth != 0, "Encountered 'return' statement outside of function.");
                 ParseReturnStatement();
             }
+            else if (Next(Token.Kind.KeywordPrint))
+            {
+                ParsePrintStatement();
+            }
             else
             {
                 ParseExpression();
@@ -266,6 +273,12 @@ namespace CustomProject
             }
 
             ast = new ReturnStatement(expr);
+        }
+
+        private void ParsePrintStatement()
+        {
+            ParseExpression();
+            ast = new PrintStatement(ast);
         }
 
         private void ParseExpression()
@@ -432,6 +445,11 @@ namespace CustomProject
                     ast = new Equality(lhs, rhs);
                     break;
 
+                case Token.Kind.DelimOpenBracket:
+                    Expect(Token.Kind.DelimCloseBracket, "Expected ']' to terminate subscript operation.");
+                    ast = new Subscript(lhs, rhs);
+                    break;
+
                 default:
                     Error("Expected binary operator but found '{0}'.", op.source);
                     break;
@@ -446,13 +464,53 @@ namespace CustomProject
         private void ParseAssignment()
         {
             IAST lhs = ast;
-            Assert(lhs is Identifier, "First argument of '=' must be an identifier.");
-            string id = (lhs as Identifier).Id;
+            if (lhs is Identifier id)
+            {
+                ParseAssignmentIdentifier(id);
+            }
+            else if (lhs is Subscript sub)
+            {
+                ParseAssignmentSubscript(sub);
+            }
+            else
+            {
+                Error("First operand of '=' is not assignable.");
+            }   
+        }
+
+        private void ParseAssignmentIdentifier(Identifier id)
+        {
+            ParseExpression();
+            IAST assigner = ast;
+            ast = new VariableAssignment(id.Id, assigner);
+        }
+
+        private void ParseAssignmentSubscript(Subscript sub)
+        {
+            IAST list = sub.Lhs;
+            IAST subscript = sub.Rhs;
 
             ParseExpression();
             IAST assigner = ast;
 
-            ast = new VariableAssignment(id, assigner);
+            ast = new SubscriptAssignment(list, subscript, assigner);
+        }
+
+        private static void ListParseFn(Parser parser)
+        {
+            parser.ParseList();
+        }
+
+        private void ParseList()
+        {
+            ListExpression list = new ListExpression();
+            do
+            {
+                ParseExpression();
+                list.AddExpression(ast);
+            } while (Next(Token.Kind.Comma) && !Check(Token.Kind.EOF));
+            Expect(Token.Kind.DelimCloseBracket, "Expected ']' keyword to terminate List literal.");
+            ast = list;
         }
 
         private static void InvokeParseFn(Parser parser)

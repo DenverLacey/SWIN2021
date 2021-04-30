@@ -1,15 +1,17 @@
 ﻿using System;
+using System.Collections.Generic;
+
 namespace CustomProject
 {
     public abstract class Binary : IAST
     {
-        protected IAST lhs;
-        protected IAST rhs;
+        public IAST Lhs { get; private set; }
+        public IAST Rhs { get; private set; }
 
         public Binary(IAST lhs, IAST rhs)
         {
-            this.lhs = lhs;
-            this.rhs = rhs;
+            Lhs = lhs;
+            Rhs = rhs;
         }
 
         public abstract Value Execute(VM vm);
@@ -24,8 +26,8 @@ namespace CustomProject
 
         public override Value Execute(VM vm)
         {
-            Value a = lhs.Execute(vm);
-            Value b = rhs.Execute(vm);
+            Value a = Lhs.Execute(vm);
+            Value b = Rhs.Execute(vm);
             bool equal = a.Equal(b);
             return new BooleanValue(equal);
         }
@@ -40,8 +42,8 @@ namespace CustomProject
 
         public override Value Execute(VM vm)
         {
-            Value a = lhs.Execute(vm);
-            Value b = rhs.Execute(vm);
+            Value a = Lhs.Execute(vm);
+            Value b = Rhs.Execute(vm);
 
             Value.AssertType(Value.ValueType.Number, a,
                 "First argument to '+' expected to be 'Number' but was given '{0}'.", a.Type);
@@ -65,8 +67,8 @@ namespace CustomProject
 
         public override Value Execute(VM vm)
         {
-            Value a = lhs.Execute(vm);
-            Value b = rhs.Execute(vm);
+            Value a = Lhs.Execute(vm);
+            Value b = Rhs.Execute(vm);
 
             Value.AssertType(Value.ValueType.Number, a,
                 "First argument to '-' expected to be 'Number' but was given '{0}'.", a.Type);
@@ -90,8 +92,8 @@ namespace CustomProject
 
         public override Value Execute(VM vm)
         {
-            Value a = lhs.Execute(vm);
-            Value b = rhs.Execute(vm);
+            Value a = Lhs.Execute(vm);
+            Value b = Rhs.Execute(vm);
 
             Value.AssertType(Value.ValueType.Number, a,
                 "First argument to '*' expected to be 'Number' but was given '{0}'.", a.Type);
@@ -115,8 +117,8 @@ namespace CustomProject
 
         public override Value Execute(VM vm)
         {
-            Value a = lhs.Execute(vm);
-            Value b = rhs.Execute(vm);
+            Value a = Lhs.Execute(vm);
+            Value b = Rhs.Execute(vm);
 
             Value.AssertType(Value.ValueType.Number, a,
                 "First argument to '/' expected to be 'Number' but was given '{0}'.", a.Type);
@@ -131,6 +133,30 @@ namespace CustomProject
         }
     }
 
+    public class Subscript : Binary
+    {
+        public Subscript(IAST lhs, IAST rhs)
+            : base(lhs, rhs)
+        {
+        }
+
+        public override Value Execute(VM vm)
+        {
+            Value list = Lhs.Execute(vm);
+            Value idx = Rhs.Execute(vm);
+
+            Value.AssertType(Value.ValueType.List, list,
+                "First operand to '[]' expected to be 'List' but was given '{0}'.", list.Type);
+            Value.AssertType(Value.ValueType.Number, idx,
+                "Second operand to '[]' expected to be 'Number' but was given '{0}'.", idx.Type);
+
+            List<Value> values = list.GetList();
+            float i = idx.GetNumber();
+
+            return values[(int)i];
+        }
+    }
+
     public class Invocation : Binary
     {
         public Invocation(IAST lhs, IAST rhs)
@@ -140,7 +166,7 @@ namespace CustomProject
 
         public override Value Execute(VM vm)
         {
-            Value callee = lhs.Execute(vm);
+            Value callee = Lhs.Execute(vm);
             switch (callee.Type)
             {
                 case Value.ValueType.Lambda:
@@ -154,7 +180,7 @@ namespace CustomProject
         private Value InvokeLambda(VM vm, LambdaValue value)
         {
             LambdaExpression lambda = value.GetLambda();
-            Block args = rhs as Block;
+            Block args = Rhs as Block;
             if (args == null)
             {
                 throw new Exception("Internal: 'rhs' of 'Invocation' was not a 'Block'.");
