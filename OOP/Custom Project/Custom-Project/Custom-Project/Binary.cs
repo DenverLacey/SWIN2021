@@ -268,11 +268,19 @@ namespace CustomProject
 
         public override Value Execute(VM vm)
         {
+            if (Lhs is BoundMethod boundMethod)
+            {
+                return InvokeBoundMethod(vm, boundMethod);
+            }
+
             Value callee = Lhs.Execute(vm);
             switch (callee.Type)
             {
                 case Value.ValueType.Lambda:
                     return InvokeLambda(vm, callee as LambdaValue);
+
+                case Value.ValueType.Class:
+                    return InvokeClass(vm, callee as ClassValue);
 
                 default:
                     throw new Exception(string.Format("Cannot invoke something of type '{0}'.", callee.Type));
@@ -315,6 +323,100 @@ namespace CustomProject
                 ret = sig.Value;
             }
             
+            return ret;
+        }
+
+        private Value InvokeClass(VM vm, ClassValue value)
+        {
+            var init = value.Methods["init"].Lambda;
+            var self = new InstanceValue(value);
+
+            Block args = Rhs as Block;
+            if (args == null)
+            {
+                throw new Exception("Internal: 'rhs' of 'Invocation' was not a 'Block'.");
+            }
+
+            if (args.Expressions.Count != init.Args.Count)
+            {
+                throw new Exception(string.Format(
+                    "Argument Mistmatch! {0}'s initializer takes {1} argument(s) but was given {2}.",
+                    value.Name, init.Args.Count, args.Expressions.Count));
+            }
+
+            VM @new = new VM(null, vm.Global);
+            @new.Constants.Add(value.Name, value);
+            @new.Constants.Add("self", self);
+
+            for (int i = 0; i < init.Args.Count; i++)
+            {
+                string argId = init.Args[i];
+                Value arg = args.Expressions[i].Execute(vm);
+                @new.Variables.Add(argId, arg);
+            }
+
+            try
+            {
+                init.Body.Execute(@new);
+            }
+            catch (ReturnStatement.Signal sig)
+            {
+                if (!sig.Value.IsNil())
+                {
+                    throw new Exception("Cannot return a non-nil value from class initializer.");
+                }
+            }
+
+            return self;
+        }
+
+        private Value InvokeBoundMethod(VM vm, BoundMethod boundMethod)
+        {
+            Value receiverValue = boundMethod.Receiver.Execute(vm);
+            Value.AssertType(Value.ValueType.Instance, receiverValue,
+                "Cannot invoke something of type '{0}'.", receiverValue.Type);
+            InstanceValue receiver = receiverValue.Instance;
+            ClassValue @class = receiver.Class;
+
+            if (!@class.Methods.ContainsKey(boundMethod.Method))
+            {
+                throw new Exception(string.Format("'{0}' is not a method of '{1}'.", boundMethod.Method, @class.Name));
+            }
+
+            var method = @class.Methods[boundMethod.Method].Lambda;
+
+            Block args = Rhs as Block;
+            if (args == null)
+            {
+                throw new Exception("Internal: 'rhs' of 'Invocation' was not a 'Block'.");
+            }
+
+            if (args.Expressions.Count != method.Args.Count)
+            {
+                throw new Exception(string.Format(
+                    "Argument Mistmatch! {0}.{1} takes {2} argument(s) but was given {3}.",
+                    @class.Name, method.Id, method.Args.Count, args.Expressions.Count));
+            }
+
+            VM @new = new VM(null, vm.Global);
+            @new.Constants.Add("self", receiver);
+
+            for (int i = 0; i < method.Args.Count; i++)
+            {
+                string argId = method.Args[i];
+                Value arg = args.Expressions[i].Execute(vm);
+                @new.Variables.Add(argId, arg);
+            }
+
+            Value ret;
+            try
+            {
+                ret = method.Body.Execute(@new);
+            }
+            catch (ReturnStatement.Signal sig)
+            {
+                ret = sig.Value;
+            }
 
             return ret;
         }

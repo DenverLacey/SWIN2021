@@ -30,6 +30,7 @@ namespace CustomProject
             KeywordVar,
             KeywordConst,
             KeywordFn,
+            KeywordClass,
             KeywordEnd,
             KeywordIf,
             KeywordElif,
@@ -54,6 +55,7 @@ namespace CustomProject
             OpRightAngle,
             OpLeftAngleEqual,
             OpRightAngleEqual,
+            OpDot,
         }
 
         public Kind kind;
@@ -318,6 +320,10 @@ namespace CustomProject
                     kind = Token.Kind.KeywordFn;
                     break;
 
+                case "class":
+                    kind = Token.Kind.KeywordClass;
+                    break;
+
                 case "end":
                     kind = Token.Kind.KeywordEnd;
                     break;
@@ -368,6 +374,9 @@ namespace CustomProject
             Token.Kind kind;
             switch (PreviousChar)
             {
+                case '.':
+                    kind = Token.Kind.OpDot;
+                    break;
                 case ',':
                     kind = Token.Kind.Comma;
                     break;

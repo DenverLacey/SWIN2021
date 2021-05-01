@@ -100,55 +100,6 @@ namespace CustomProject
         }
     }
 
-    public class VariableDeclaration : IAST
-    {
-        protected string id;
-
-        public VariableDeclaration(string id)
-        {
-            this.id = id;
-        }
-
-        public virtual Value Execute(VM vm)
-        {
-            vm.Variables.Add(id, new NilValue());
-            return new NilValue();
-        }
-    }
-
-    public class VariableInstantiation : VariableDeclaration
-    {
-        protected IAST initializer;
-
-        public VariableInstantiation(string id, IAST initializer)
-            : base(id)
-        {
-            this.initializer = initializer;
-        }
-
-        public override Value Execute(VM vm)
-        {
-            Value value = initializer.Execute(vm);
-            vm.Variables.Add(id, value);
-            return new NilValue();
-        }
-    }
-
-    public class ConstantInstantiation : VariableInstantiation
-    {
-        public ConstantInstantiation(string id, IAST initializer)
-            : base(id, initializer)
-        {
-        }
-
-        public override Value Execute(VM vm)
-        {
-            Value value = initializer.Execute(vm);
-            vm.Constants.Add(id, value);
-            return new NilValue();
-        }
-    }
-
     public class VariableAssignment : IAST
     {
         protected string id;
@@ -225,6 +176,47 @@ namespace CustomProject
             values[(int)i] = assigner.Execute(vm);
 
             return new NilValue();
+        }
+    }
+
+    public class MemberReferenceAssignment : IAST
+    {
+        IAST instance;
+        string member;
+        IAST assigner;
+
+        public MemberReferenceAssignment(IAST instance, string member, IAST assigner)
+        {
+            this.instance = instance;
+            this.member = member;
+            this.assigner = assigner;
+        }
+
+        public Value Execute(VM vm)
+        {
+            Value instValue = instance.Execute(vm);
+            Value.AssertType(Value.ValueType.Instance, instValue,
+                "First operand of '.' expected to be an instance of a class but was given '{0}'.", instValue.Type);
+            InstanceValue inst = instValue.Instance;
+            inst.Fields[member] = assigner.Execute(vm);
+            return new NilValue();
+        }
+    }
+
+    public class BoundMethod : IAST
+    {
+        public IAST Receiver { get; private set; }
+        public string Method { get; private set; }
+
+        public BoundMethod(IAST receiver, string method)
+        {
+            Receiver = receiver;
+            Method = method;
+        }
+
+        public Value Execute(VM vm)
+        {
+            throw new Exception("Internal: Should not execute a BoundMethod directly.");
         }
     }
 
@@ -355,6 +347,112 @@ namespace CustomProject
         public Value Execute(VM vm)
         {
             return new LambdaValue(this);
+        }
+    }
+
+    public class VariableDeclaration : IAST
+    {
+        protected string id;
+
+        public VariableDeclaration(string id)
+        {
+            this.id = id;
+        }
+
+        public virtual Value Execute(VM vm)
+        {
+            vm.Variables.Add(id, new NilValue());
+            return new NilValue();
+        }
+    }
+
+    public class VariableInstantiation : VariableDeclaration
+    {
+        protected IAST initializer;
+
+        public VariableInstantiation(string id, IAST initializer)
+            : base(id)
+        {
+            this.initializer = initializer;
+        }
+
+        public override Value Execute(VM vm)
+        {
+            Value value = initializer.Execute(vm);
+            vm.Variables.Add(id, value);
+            return new NilValue();
+        }
+    }
+
+    public class ConstantInstantiation : VariableInstantiation
+    {
+        public ConstantInstantiation(string id, IAST initializer)
+            : base(id, initializer)
+        {
+        }
+
+        public override Value Execute(VM vm)
+        {
+            Value value = initializer.Execute(vm);
+            vm.Constants.Add(id, value);
+            return new NilValue();
+        }
+    }
+
+    public class ClassDeclaration : IAST
+    {
+        public string name;
+        List<LambdaExpression> methods;
+
+        public ClassDeclaration(string name, List<LambdaExpression> methods)
+        {
+            this.name = name;
+            this.methods = methods;
+        }
+
+        public Value Execute(VM vm)
+        {
+            var @class = new ClassValue(name);
+
+            foreach (var method in methods)
+            {
+                string methodName = method.Id;
+                LambdaValue methodVal = method.Execute(vm) as LambdaValue;
+                @class.Methods[methodName] = methodVal;
+            }
+
+            vm.Constants.Add(name, @class);
+            return new NilValue();
+        }
+    }
+
+    public class MemberReference : IAST
+    {
+        public string Member { get; private set; }
+        public IAST Instance { get; private set; }
+
+        public MemberReference(IAST instance, string member)
+        {
+            Member = member;
+            Instance = instance;
+        }
+
+        public Value Execute(VM vm)
+        {
+            Value inst = Instance.Execute(vm);
+            switch (inst.Type)
+            {
+                case Value.ValueType.Instance:
+                    return MemberReferenceInstance(vm, inst as InstanceValue);
+
+                default:
+                    throw new Exception(string.Format("Cannot refer to members of something of type '{0}'.", inst.Type));
+            }
+        }
+
+        private Value MemberReferenceInstance(VM vm, InstanceValue value)
+        {
+            return value.Fields[Member];
         }
     }
 }

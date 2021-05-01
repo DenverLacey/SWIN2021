@@ -16,7 +16,9 @@ namespace CustomProject
             String,
             Char,
             Lambda,
-            List
+            List,
+            Class,
+            Instance,
         }
 
         public ValueType Type { get; protected set; }
@@ -71,27 +73,37 @@ namespace CustomProject
 
         public virtual float Number
         {
-            get => throw new Exception("Value is not a boolean.");
+            get => throw new Exception("Value is not a number.");
         }
 
         public virtual string String
         {
-            get => throw new Exception("Value is not a boolean.");
+            get => throw new Exception("Value is not a string.");
         }
 
         public virtual char Char
         {
-            get => throw new Exception("Value is not a boolean.");
+            get => throw new Exception("Value is not a char.");
         }
 
         public virtual LambdaExpression Lambda
         {
-            get => throw new Exception("Value is not a boolean.");
+            get => throw new Exception("Value is not a lambda.");
         }
 
         public virtual List<Value> List
         {
-            get => throw new Exception("Value is not a boolean.");
+            get => throw new Exception("Value is not a list.");
+        }
+
+        public virtual ClassValue Class
+        {
+            get => throw new Exception("Value is not a class.");
+        }
+
+        public virtual InstanceValue Instance
+        {
+            get => throw new Exception("Value is not a class.");
         }
     }
 
@@ -278,6 +290,100 @@ namespace CustomProject
                 }
             }
             builder.Append("]");
+            return builder.ToString();
+        }
+    }
+
+    public class ClassValue : Value
+    {
+        public string Name { get; private set; }
+        public Dictionary<string, LambdaValue> Methods { get; private set; }
+
+        public override ClassValue Class { get => this; }
+
+        public ClassValue(string name)
+            : base(ValueType.Class)
+        {
+            Name = name;
+            Methods = new Dictionary<string, LambdaValue>();
+        }
+
+        public override bool UncheckedEqual(Value other)
+        {
+            return this == other;
+        }
+
+        public override string ToString()
+        {
+            StringBuilder builder = new StringBuilder();
+            builder.AppendFormat("{0} {{\n", Name);
+
+            foreach (var binding in Methods)
+            {
+                builder.AppendFormat("  {0}: {1}\n", binding.Key, binding.Value);
+            }
+
+            builder.Append("}");
+
+            return builder.ToString();
+        }
+    }
+
+    public class InstanceValue : Value
+    {
+        private ClassValue @class;
+        public override ClassValue Class { get => @class; }
+        public Dictionary<string, Value> Fields { get; private set; }
+        public override InstanceValue Instance { get => this; }
+
+        public InstanceValue(ClassValue @class)
+            : base(ValueType.Instance)
+        {
+            this.@class = @class;
+            Fields = new Dictionary<string, Value>();
+        }
+
+        public override bool UncheckedEqual(Value other)
+        {
+            if (!@class.UncheckedEqual(other.Class))
+            {
+                return false;
+            }
+
+            var myFields = Fields.Values.GetEnumerator();
+            var theirFields = other.Instance.Fields.Values.GetEnumerator();
+
+            while (myFields.MoveNext() && theirFields.MoveNext())
+            {
+                var mine = myFields.Current;
+                var theirs = theirFields.Current;
+
+                if (!mine.Equal(theirs))
+                {
+                    return false;
+                }
+            }
+
+            return true;
+        }
+
+        public override string ToString()
+        {
+            StringBuilder builder = new StringBuilder();
+            builder.AppendFormat("{0}(", Class.Name);
+
+            var fields = Fields.GetEnumerator();
+            for (int i = 0; i < Fields.Count; i++)
+            {
+                fields.MoveNext();
+                builder.AppendFormat("{0}: {1}", fields.Current.Key, fields.Current.Value);
+                if (i + 1 < Fields.Count)
+                {
+                    builder.Append(", ");
+                }
+            }
+
+            builder.Append(")");
             return builder.ToString();
         }
     }

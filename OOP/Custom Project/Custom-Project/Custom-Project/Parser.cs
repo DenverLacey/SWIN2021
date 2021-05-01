@@ -65,6 +65,7 @@ namespace CustomProject
             new ParseRule(Precedence.None, null, null), // KeywordVar
             new ParseRule(Precedence.None, null, null), // KeywordConst
             new ParseRule(Precedence.None, null, null), // KeywordFn
+            new ParseRule(Precedence.None, null, null), // KeywordClass
             new ParseRule(Precedence.None, null, null), // KeywordEnd
             new ParseRule(Precedence.None, null, null), // KeywordIf
             new ParseRule(Precedence.None, null, null), // KeywordElif
@@ -89,6 +90,7 @@ namespace CustomProject
             new ParseRule(Precedence.Comparison, null, BinaryParseFn), // OpRightAngle
             new ParseRule(Precedence.Comparison, null, BinaryParseFn), // OpLeftAngleEqual
             new ParseRule(Precedence.Comparison, null, BinaryParseFn), // OpRightAngleEqual
+            new ParseRule(Precedence.Call, null, MemberReferenceParseFn), // OpDot
         };
 
         private static ParseRule GetRule(Token.Kind kind)
@@ -218,6 +220,10 @@ namespace CustomProject
             else if (Next(Token.Kind.KeywordFn))
             {
                 ParseFunctionDeclaration();
+            }
+            else if (Next(Token.Kind.KeywordClass))
+            {
+                ParseClassDeclaration();
             }
             else
             {
@@ -496,6 +502,39 @@ namespace CustomProject
             }
         }
 
+        private static void MemberReferenceParseFn(Parser parser)
+        {
+            parser.ParseMemberReference();
+        }
+
+        private void ParseMemberReference()
+        {
+            Expect(Token.Kind.Identifier, "Expected identifier after '.'.");
+            string id = Previous.source;
+
+            if (Next(Token.Kind.DelimOpenParenthesis))
+            {
+                var boundMethod = new BoundMethod(ast, id);
+
+                Block args = new Block();
+                if (!Check(Token.Kind.DelimCloseParenthesis))
+                {
+                    do
+                    {
+                        ParseExpression();
+                        args.AddExpression(ast);
+                    } while (Next(Token.Kind.Comma) && !Check(Token.Kind.EOF));
+                }
+                Expect(Token.Kind.DelimCloseParenthesis, "Expected ')' to end method call.");
+
+                ast = new Invocation(boundMethod, args);
+            }
+            else
+            {
+                ast = new MemberReference(ast, id);
+            }
+        }
+
         private static void AssigmentParseFn(Parser parser)
         {
             parser.ParseAssignment();
@@ -511,6 +550,10 @@ namespace CustomProject
             else if (lhs is Subscript sub)
             {
                 ParseAssignmentSubscript(sub);
+            }
+            else if (lhs is MemberReference memRef)
+            {
+                ParseAssignmentMemberReference(memRef);
             }
             else
             {
@@ -534,6 +577,17 @@ namespace CustomProject
             IAST assigner = ast;
 
             ast = new SubscriptAssignment(list, subscript, assigner);
+        }
+
+        private void ParseAssignmentMemberReference(MemberReference memRef)
+        {
+            IAST instance = memRef.Instance;
+            string member = memRef.Member;
+
+            ParseExpression();
+            IAST assigner = ast;
+
+            ast = new MemberReferenceAssignment(instance, member, assigner);
         }
 
         private static void ListParseFn(Parser parser)
@@ -577,7 +631,7 @@ namespace CustomProject
             ast = new Invocation(lhs, args);
         }
 
-        private void ParseFunctionDeclaration()
+        private void ParseFunctionDeclarationUnwrapped()
         {
             lambdaDepth++;
 
@@ -601,10 +655,46 @@ namespace CustomProject
             ParseBlock();
             Block body = ast as Block;
 
-            var lambda = new LambdaExpression(args, body, id);
-            ast = new ConstantInstantiation(id, lambda);
+            ast = new LambdaExpression(args, body, id);
 
             lambdaDepth--;
+        }
+
+        private void ParseFunctionDeclaration()
+        {
+            ParseFunctionDeclarationUnwrapped();
+            var lambda = ast as LambdaExpression;
+            ast = new ConstantInstantiation(lambda.Id, lambda);
+        }
+
+        private void ParseClassDeclaration()
+        {
+            Expect(Token.Kind.Identifier, "Expected identifier after 'class' keyword.");
+            string id = Previous.source;
+
+            if (Next(Token.Kind.DelimOpenParenthesis))
+            {
+                throw new NotImplementedException("Inheritance not yet implemented.");
+
+                Expect(Token.Kind.DelimCloseParenthesis, "Expected ')'.");
+            }
+
+            List<LambdaExpression> methods = new List<LambdaExpression>();
+
+            if (!Check(Token.Kind.KeywordEnd))
+            {
+                Expect(Token.Kind.EndStatement, "Methods of class must be on subsequent lines.");
+                while (Next(Token.Kind.KeywordFn))
+                {
+                    ParseFunctionDeclarationUnwrapped();
+                    methods.Add(ast as LambdaExpression);
+                    Expect(Token.Kind.EndStatement, "Methods must be on separate lines.");
+                }
+            }
+
+            Expect(Token.Kind.KeywordEnd, "Expected 'end' to terminate class declaration.");
+
+            ast = new ClassDeclaration(id, methods);
         }
 
         private void ParseIfStatement()
