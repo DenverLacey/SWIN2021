@@ -31,6 +31,7 @@ namespace CustomProject
             KeywordConst,
             KeywordFn,
             KeywordClass,
+            KeywordSuper,
             KeywordEnd,
             KeywordIf,
             KeywordElif,
@@ -322,6 +323,10 @@ namespace CustomProject
 
                 case "class":
                     kind = Token.Kind.KeywordClass;
+                    break;
+
+                case "super":
+                    kind = Token.Kind.KeywordSuper;
                     break;
 
                 case "end":

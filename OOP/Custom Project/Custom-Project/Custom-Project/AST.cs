@@ -62,6 +62,58 @@ namespace CustomProject
         }
     }
 
+    public class SuperStatement : Block
+    {
+        public override Value Execute(VM vm)
+        {
+            if (!vm.Parent.Constants.ContainsKey("self") ||
+                !(vm.Parent.Constants["self"] is InstanceValue))
+            {
+                throw new Exception("Can only call 'super()' inside a class.");
+            }
+
+            InstanceValue self = vm.Parent.Constants["self"].Instance;
+
+            if (!self.Class.Methods.ContainsKey("<SUPER>"))
+            {
+                throw new Exception(string.Format("Cannot call 'super()'. '{0}' is not a subclass.", self.Class.Name));
+            }
+
+            LambdaExpression super = self.Class.Methods["<SUPER>"].Lambda;
+
+            if (Expressions.Count != super.Args.Count)
+            {
+                throw new Exception(string.Format(
+                    "Argument Mistmatch! {0}.super takes {1} argument(s) but was given {2}.",
+                    self.Class.Name, super.Args.Count, Expressions.Count));
+            }
+
+            VM @new = new VM(null, vm.Global);
+            @new.Constants.Add("self", self);
+
+            for (int i = 0; i < super.Args.Count; i++)
+            {
+                string argId = super.Args[i];
+                Value arg = Expressions[i].Execute(vm);
+                @new.Variables.Add(argId, arg);
+            }
+
+            try
+            {
+                super.Body.Execute(@new);
+            }
+            catch (ReturnStatement.Signal sig)
+            {
+                if (!sig.Value.IsNil())
+                {
+                    throw new Exception("Cannot return a non-nil value from class initializer.");
+                }
+            }
+
+            return new NilValue();
+        }
+    }
+
     public class Identifier : IAST
     {
         public string Id { get; private set; }
@@ -401,18 +453,40 @@ namespace CustomProject
 
     public class ClassDeclaration : IAST
     {
-        public string name;
+        string name;
+        string superClass;
         List<LambdaExpression> methods;
 
-        public ClassDeclaration(string name, List<LambdaExpression> methods)
+        public ClassDeclaration(string name, string superClass, List<LambdaExpression> methods)
         {
             this.name = name;
+            this.superClass = superClass;
             this.methods = methods;
         }
 
         public Value Execute(VM vm)
         {
             var @class = new ClassValue(name);
+
+            if (superClass != null)
+            {
+                if (!vm.Constants.ContainsKey(superClass))
+                {
+                    throw new Exception(string.Format("Unresolved identifier '{0}'.", superClass));
+                }
+
+                Value superClassValue = vm.Constants[superClass];
+                Value.AssertType(Value.ValueType.Class, superClassValue,
+                    "Cannot inherit from something of type '{0}'.", superClassValue.Type);
+                ClassValue super = superClassValue.Class;
+
+                foreach (var method in super.Methods)
+                {
+                    string methodName = method.Key;
+                    if (method.Key == "init") methodName = "<SUPER>";
+                    @class.Methods[methodName] = method.Value;
+                }
+            }
 
             foreach (var method in methods)
             {

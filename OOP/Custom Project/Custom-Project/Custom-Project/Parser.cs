@@ -66,6 +66,7 @@ namespace CustomProject
             new ParseRule(Precedence.None, null, null), // KeywordConst
             new ParseRule(Precedence.None, null, null), // KeywordFn
             new ParseRule(Precedence.None, null, null), // KeywordClass
+            new ParseRule(Precedence.None, null, null), // KeywordSuper
             new ParseRule(Precedence.None, null, null), // KeywordEnd
             new ParseRule(Precedence.None, null, null), // KeywordIf
             new ParseRule(Precedence.None, null, null), // KeywordElif
@@ -260,6 +261,10 @@ namespace CustomProject
             else if (Next(Token.Kind.KeywordPrint))
             {
                 ParsePrintStatement();
+            }
+            else if (Next(Token.Kind.KeywordSuper))
+            {
+                ParseSuperStatement();
             }
             else
             {
@@ -671,19 +676,21 @@ namespace CustomProject
         {
             Expect(Token.Kind.Identifier, "Expected identifier after 'class' keyword.");
             string id = Previous.source;
+            string superClass = null;
 
             if (Next(Token.Kind.DelimOpenParenthesis))
             {
-                throw new NotImplementedException("Inheritance not yet implemented.");
-
+                Expect(Token.Kind.Identifier, "Expected identifier after '('.");
+                superClass = Previous.source;
                 Expect(Token.Kind.DelimCloseParenthesis, "Expected ')'.");
             }
+
+            Expect(Token.Kind.EndStatement, "Body of class must be on subsequent lines.");
 
             List<LambdaExpression> methods = new List<LambdaExpression>();
 
             if (!Check(Token.Kind.KeywordEnd))
             {
-                Expect(Token.Kind.EndStatement, "Methods of class must be on subsequent lines.");
                 while (Next(Token.Kind.KeywordFn))
                 {
                     ParseFunctionDeclarationUnwrapped();
@@ -694,7 +701,27 @@ namespace CustomProject
 
             Expect(Token.Kind.KeywordEnd, "Expected 'end' to terminate class declaration.");
 
-            ast = new ClassDeclaration(id, methods);
+            ast = new ClassDeclaration(id, superClass, methods);
+        }
+
+        private void ParseSuperStatement()
+        {
+            SuperStatement super = new SuperStatement();
+
+            Expect(Token.Kind.DelimOpenParenthesis, "Expected '(' after 'super' keyword.");
+
+            if (!Check(Token.Kind.DelimCloseParenthesis))
+            {
+                do
+                {
+                    ParseExpression();
+                    super.AddExpression(ast);
+                } while (Next(Token.Kind.Comma) && !Check(Token.Kind.EOF));
+            }
+
+            Expect(Token.Kind.DelimCloseParenthesis, "Expected ')' to terminate 'super' statement.");
+
+            ast = super;
         }
 
         private void ParseIfStatement()
