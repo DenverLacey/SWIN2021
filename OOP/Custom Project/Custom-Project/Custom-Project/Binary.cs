@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Text;
 
 namespace CustomProject
 {
@@ -377,17 +378,33 @@ namespace CustomProject
         private Value InvokeBoundMethod(VM vm, BoundMethod boundMethod)
         {
             Value receiverValue = boundMethod.Receiver.Execute(vm);
-            Value.AssertType(Value.ValueType.Instance, receiverValue,
-                "Cannot invoke something of type '{0}'.", receiverValue.Type);
-            InstanceValue receiver = receiverValue.Instance;
+
+            switch (receiverValue.Type)
+            {
+                case Value.ValueType.Instance:
+                    return InvokeBoundMethodInstance(vm, receiverValue.Instance, boundMethod.Method);
+
+                case Value.ValueType.List:
+                    return InvokeBoundMethodList(vm, receiverValue.List, boundMethod.Method);
+
+                case Value.ValueType.String:
+                    return InvokeBoundMethodString(vm, receiverValue as StringValue, boundMethod.Method);
+
+                default:
+                    throw new Exception(string.Format("Cannot invoke something of type '{0}'.", receiverValue.Type));
+            }
+        }
+
+        private Value InvokeBoundMethodInstance(VM vm, InstanceValue receiver, string methodName)
+        {
             ClassValue @class = receiver.Class;
 
-            if (!@class.Methods.ContainsKey(boundMethod.Method))
+            if (!@class.Methods.ContainsKey(methodName))
             {
-                throw new Exception(string.Format("'{0}' is not a method of '{1}'.", boundMethod.Method, @class.Name));
+                throw new Exception(string.Format("'{0}' is not a method of '{1}'.", methodName, @class.Name));
             }
 
-            var method = @class.Methods[boundMethod.Method].Lambda;
+            var method = @class.Methods[methodName].Lambda;
 
             Block args = Rhs as Block;
             if (args == null)
@@ -423,6 +440,123 @@ namespace CustomProject
             }
 
             return ret;
+        }
+
+        private Value InvokeBoundMethodList(VM vm, List<Value> list, string methodName)
+        {
+            switch (methodName)
+            {
+                case "push":
+                    {
+                        Block args = Rhs as Block;
+                        if (args == null)
+                        {
+                            throw new Exception("Internal: 'rhs' of 'Invocation' was not a 'Block'.");
+                        }
+
+                        if (args.Expressions.Count != 1)
+                        {
+                            throw new Exception(string.Format("Argument Mistmatch! List.push takes 1 argument(s) but was given {0}.", args.Expressions.Count));
+                        }
+
+                        Value value = args.Expressions[0].Execute(vm);
+                        list.Add(value);
+                        break;
+                    }
+                case "insert":
+                    {
+                        Block args = Rhs as Block;
+                        if (args == null)
+                        {
+                            throw new Exception("Internal: 'rhs' of 'Invocation' was not a 'Block'.");
+                        }
+
+                        if (args.Expressions.Count != 2)
+                        {
+                            throw new Exception(string.Format("Argument Mistmatch! List.push takes 2 argument(s) but was given {0}.", args.Expressions.Count));
+                        }
+
+                        Value idx = args.Expressions[0].Execute(vm);
+                        Value.AssertType(Value.ValueType.Number, idx,
+                            "Type mismatch! List.remove expects first argument to be 'Number' but was given '{0}'.", idx.Type);
+
+                        Value value = args.Expressions[1].Execute(vm);
+
+                        list.Insert((int)idx.Number, value);
+                        break;
+                    }
+                case "find":
+                    {
+                        Block args = Rhs as Block;
+                        if (args == null)
+                        {
+                            throw new Exception("Internal: 'rhs' of 'Invocation' was not a 'Block'.");
+                        }
+
+                        if (args.Expressions.Count != 1)
+                        {
+                            throw new Exception(string.Format("Argument Mistmatch! List.push takes 1 argument(s) but was given {0}.", args.Expressions.Count));
+                        }
+
+                        Value value = args.Expressions[0].Execute(vm);
+                        return new NumberValue(list.FindIndex(v => v.Equal(value)));
+                    }
+                case "remove":
+                    {
+                        Block args = Rhs as Block;
+                        if (args == null)
+                        {
+                            throw new Exception("Internal: 'rhs' of 'Invocation' was not a 'Block'.");
+                        }
+
+                        if (args.Expressions.Count != 1)
+                        {
+                            throw new Exception(string.Format("Argument Mistmatch! List.push takes 1 argument(s) but was given {0}.", args.Expressions.Count));
+                        }
+
+                        Value value = args.Expressions[0].Execute(vm);
+                        Value.AssertType(Value.ValueType.Number, value,
+                            "Type mismatch! List.remove expects first argument to be 'Number' but was given '{0}'.", value.Type);
+
+                        list.RemoveAt((int)value.Number);
+                        break;
+                    }
+
+                default:
+                    throw new Exception(string.Format("'{0}' is not a method of 'List'.", methodName));
+            }
+
+            return new NilValue();
+        }
+
+        private Value InvokeBoundMethodString(VM vm, StringValue str, string methodName)
+        {
+            switch (methodName)
+            {
+                case "concat":
+                    {
+                        Block args = Rhs as Block;
+                        if (args == null)
+                        {
+                            throw new Exception("Internal: 'rhs' of 'Invocation' was not a 'Block'.");
+                        }
+
+                        StringBuilder builder = new StringBuilder(str.String);
+                        foreach (IAST expr in args.Expressions)
+                        {
+                            Value arg = expr.Execute(vm);
+                            builder.Append(arg.ToString());
+                        }
+
+                        str.ReplaceString(builder.ToString());
+                        break;
+                    }
+
+                default:
+                    throw new Exception(string.Format("'{0}' is not a method of 'String'.", methodName));
+            }
+
+            return new NilValue();
         }
     }
 

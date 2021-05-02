@@ -394,14 +394,8 @@ namespace CustomProject
 
         private void IterateOverList(VM vm, List<Value> list)
         {
-            int count = 0;
-            while (true)
+            for (int count = 0; count < list.Count; count++)
             {
-                if (count >= list.Count)
-                {
-                    break;
-                }
-
                 Value it = list[count];
 
                 VM @new = new VM(vm, vm.Global);
@@ -411,21 +405,14 @@ namespace CustomProject
                 }
 
                 list[count] = @new.Variables[iter];
-                count++;
             }
         }
 
         private void IterateOverString(VM vm, StringValue str)
         {
             char[] chars = str.String.ToCharArray();
-            int count = 0;
-            while (true)
+            for (int count = 0; count < chars.Length; count++)
             {
-                if (count >= chars.Length)
-                {
-                    break;
-                }
-
                 Value it = new CharValue(chars[count]);
 
                 VM @new = new VM(vm, vm.Global);
@@ -435,7 +422,6 @@ namespace CustomProject
                 }
 
                 chars[count] = @new.Variables[iter].Char;
-                count++;
             }
             str.ReplaceString(new string(chars));
         }

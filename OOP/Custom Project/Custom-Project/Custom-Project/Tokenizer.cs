@@ -254,10 +254,10 @@ namespace CustomProject
         {
             // skip " character
             tokenStart++;
-            do
+            while (CurrentChar != '"')
             {
                 tokenLength++;
-            } while (CurrentChar != '"');
+            }
 
             string stringString = TokenString;
             Value stringVal = new StringValue(stringString);
@@ -273,10 +273,10 @@ namespace CustomProject
         {
             // skip ' character
             tokenStart++;
-            do
+            while (CurrentChar != '\'')
             {
                 tokenLength++;
-            } while (CurrentChar != '\'');
+            }
 
             if (tokenLength != 1)
             {

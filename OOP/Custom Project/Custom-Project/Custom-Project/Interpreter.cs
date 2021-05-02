@@ -18,10 +18,8 @@ namespace CustomProject
             vm.SetEnvironment(null, vm);
 
             string source = GetSourceCode(filepath);
-
             var tokens = tokenizer.Tokenize(source);
             var program = parser.Parse(tokens);
-
             vm.Execute(program);
 
             Console.WriteLine("\nVariables:");
