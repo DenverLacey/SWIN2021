@@ -19,6 +19,7 @@ namespace CustomProject
             List,
             Class,
             Instance,
+            Range,
         }
 
         public ValueType Type { get; protected set; }
@@ -105,6 +106,11 @@ namespace CustomProject
         {
             get => throw new Exception("Value is not a class.");
         }
+
+        public virtual RangeValue Range
+        {
+            get => throw new Exception("Value is not a class.");
+        }
     }
 
     public class NilValue : Value
@@ -183,6 +189,11 @@ namespace CustomProject
             : base(ValueType.String)
         {
             this.value = value;
+        }
+
+        public void ReplaceString(string newValue)
+        {
+            value = newValue;
         }
 
         public override bool UncheckedEqual(Value other)
@@ -298,14 +309,16 @@ namespace CustomProject
     {
         public string Name { get; private set; }
         public Dictionary<string, LambdaValue> Methods { get; private set; }
+        public ClassValue SuperClass { get; private set; }
 
         public override ClassValue Class { get => this; }
 
-        public ClassValue(string name)
+        public ClassValue(string name, ClassValue superClass)
             : base(ValueType.Class)
         {
             Name = name;
             Methods = new Dictionary<string, LambdaValue>();
+            SuperClass = superClass;
         }
 
         public override bool UncheckedEqual(Value other)
@@ -316,7 +329,14 @@ namespace CustomProject
         public override string ToString()
         {
             StringBuilder builder = new StringBuilder();
-            builder.AppendFormat("{0} {{\n", Name);
+            builder.AppendFormat("{0}", Name);
+
+            if (SuperClass != null)
+            {
+                builder.AppendFormat("({0})", SuperClass.Name);
+            }
+
+            builder.Append(" {\n");
 
             foreach (var binding in Methods)
             {
@@ -341,6 +361,18 @@ namespace CustomProject
         {
             this.@class = @class;
             Fields = new Dictionary<string, Value>();
+        }
+
+        public ClassValue UpCast()
+        {
+            var classValue = @class;
+            @class = @class.SuperClass;
+            return classValue;
+        }
+
+        public void Cast(ClassValue classValue)
+        {
+            @class = classValue;
         }
 
         public override bool UncheckedEqual(Value other)
@@ -385,6 +417,36 @@ namespace CustomProject
 
             builder.Append(")");
             return builder.ToString();
+        }
+    }
+
+    public class RangeValue : Value
+    {
+        public Value Start { get; private set; }
+        public Value End { get; private set; }
+        public bool Inclusive { get; private set; }
+
+        public override RangeValue Range { get => this; }
+
+        public RangeValue(Value start, Value end, bool inclusive)
+            : base(ValueType.Range)
+        {
+            Start = start;
+            End = end;
+            Inclusive = inclusive;
+        }
+
+        public override bool UncheckedEqual(Value other)
+        {
+            return Start.Equal(other.Range.Start)
+                && End.Equal(other.Range.End)
+                && Inclusive == other.Range.Inclusive;
+        }
+
+        public override string ToString()
+        {
+            string op = Inclusive ? "..=" : "..";
+            return string.Format("{0}{1}{2}", Start, op, End);
         }
     }
 }

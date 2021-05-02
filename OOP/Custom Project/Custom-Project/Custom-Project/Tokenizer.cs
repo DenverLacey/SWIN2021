@@ -37,6 +37,8 @@ namespace CustomProject
             KeywordElif,
             KeywordElse,
             KeywordWhile,
+            KeywordFor,
+            KeywordIn,
             KeywordBreak,
             KeywordContinue,
             KeywordReturn,
@@ -57,6 +59,8 @@ namespace CustomProject
             OpLeftAngleEqual,
             OpRightAngleEqual,
             OpDot,
+            OpDoubleDot,
+            OpDoubleDotEqual,
         }
 
         public Kind kind;
@@ -103,6 +107,22 @@ namespace CustomProject
             {
                 int idx = tokenStart + tokenLength - 1;
                 if (idx < source.Length && idx >= 0)
+                {
+                    return source[idx];
+                }
+                else
+                {
+                    return '\0';
+                }
+            }
+        }
+
+        private char NextChar
+        {
+            get
+            {
+                int idx = tokenStart + tokenLength + 1;
+                if (idx < source.Length)
                 {
                     return source[idx];
                 }
@@ -210,7 +230,7 @@ namespace CustomProject
                 tokenLength++;
             } while (char.IsDigit(CurrentChar));
 
-            if (CurrentChar == '.')
+            if (CurrentChar == '.' && char.IsDigit(NextChar))
             {
                 do
                 {
@@ -349,6 +369,14 @@ namespace CustomProject
                     kind = Token.Kind.KeywordWhile;
                     break;
 
+                case "for":
+                    kind = Token.Kind.KeywordFor;
+                    break;
+
+                case "in":
+                    kind = Token.Kind.KeywordIn;
+                    break;
+
                 case "break":
                     kind = Token.Kind.KeywordBreak;
                     break;
@@ -380,10 +408,29 @@ namespace CustomProject
             switch (PreviousChar)
             {
                 case '.':
-                    kind = Token.Kind.OpDot;
+                    if (CurrentChar == '.')
+                    {
+                        tokenLength++;
+                        if (CurrentChar == '=')
+                        {
+                            tokenLength++;
+                            kind = Token.Kind.OpDoubleDotEqual;
+                        }
+                        else
+                        {
+                            kind = Token.Kind.OpDoubleDot;
+                        }
+                    }
+                    else
+                    {
+                        kind = Token.Kind.OpDot;
+                    }
                     break;
                 case ',':
                     kind = Token.Kind.Comma;
+                    break;
+                case ';':
+                    kind = Token.Kind.EndStatement;
                     break;
 
                 case '(':

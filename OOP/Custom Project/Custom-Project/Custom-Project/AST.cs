@@ -73,19 +73,20 @@ namespace CustomProject
             }
 
             InstanceValue self = vm.Parent.Constants["self"].Instance;
+            ClassValue selfClass = self.UpCast();
 
-            if (!self.Class.Methods.ContainsKey("<SUPER>"))
+            if (!selfClass.Methods.ContainsKey("<SUPER>"))
             {
-                throw new Exception(string.Format("Cannot call 'super()'. '{0}' is not a subclass.", self.Class.Name));
+                throw new Exception(string.Format("Cannot call 'super()'. '{0}' is not a subclass.", selfClass.Name));
             }
 
-            LambdaExpression super = self.Class.Methods["<SUPER>"].Lambda;
+            LambdaExpression super = selfClass.Methods["<SUPER>"].Lambda;
 
             if (Expressions.Count != super.Args.Count)
             {
                 throw new Exception(string.Format(
                     "Argument Mistmatch! {0}.super takes {1} argument(s) but was given {2}.",
-                    self.Class.Name, super.Args.Count, Expressions.Count));
+                    selfClass.Name, super.Args.Count, Expressions.Count));
             }
 
             VM @new = new VM(null, vm.Global);
@@ -106,9 +107,11 @@ namespace CustomProject
             {
                 if (!sig.Value.IsNil())
                 {
-                    throw new Exception("Cannot return a non-nil value from class initializer.");
+                    throw new Exception("Cannot return a value from class initializer.");
                 }
             }
+
+            self.Cast(selfClass);
 
             return new NilValue();
         }
@@ -351,6 +354,183 @@ namespace CustomProject
         }
     }
 
+    public class ForStatement : IAST
+    {
+        string iter;
+        string counter;
+        IAST iterable;
+        Block body;
+
+        public ForStatement(string iter, string counter, IAST iterable, Block body)
+        {
+            this.iter = iter;
+            this.counter = counter;
+            this.iterable = iterable;
+            this.body = body;
+        }
+
+        public Value Execute(VM vm)
+        {
+            Value iterableValue = iterable.Execute(vm);
+            switch (iterableValue.Type)
+            {
+                case Value.ValueType.List:
+                    IterateOverList(vm, iterableValue.List);
+                    break;
+
+                case Value.ValueType.String:
+                    IterateOverString(vm, iterableValue as StringValue);
+                    break;
+
+                case Value.ValueType.Range:
+                    IterateOverRange(vm, iterableValue.Range);
+                    break;
+
+                default:
+                    throw new Exception(string.Format("Cannot iterate over something of type '{0}'.", iterableValue.Type));
+            }
+            return new NilValue();
+        }
+
+        private void IterateOverList(VM vm, List<Value> list)
+        {
+            int count = 0;
+            while (true)
+            {
+                if (count >= list.Count)
+                {
+                    break;
+                }
+
+                Value it = list[count];
+
+                VM @new = new VM(vm, vm.Global);
+                if (DoExecution(@new, it, count))
+                {
+                    break;
+                }
+
+                list[count] = @new.Variables[iter];
+                count++;
+            }
+        }
+
+        private void IterateOverString(VM vm, StringValue str)
+        {
+            char[] chars = str.String.ToCharArray();
+            int count = 0;
+            while (true)
+            {
+                if (count >= chars.Length)
+                {
+                    break;
+                }
+
+                Value it = new CharValue(chars[count]);
+
+                VM @new = new VM(vm, vm.Global);
+                if (DoExecution(@new, it, count))
+                {
+                    break;
+                }
+
+                chars[count] = @new.Variables[iter].Char;
+                count++;
+            }
+            str.ReplaceString(new string(chars));
+        }
+
+        private void IterateOverRange(VM vm, RangeValue range)
+        {
+            Value it = range.Start;
+            int count = 0;
+
+            while (true)
+            {
+                Value end = range.End;
+                switch (it.Type)
+                {
+                    case Value.ValueType.Number:
+                        {
+                            bool @break;
+                            if (range.Inclusive)
+                            {
+                                @break = it.Number > end.Number;
+                            }
+                            else
+                            {
+                                @break = it.Number >= end.Number;
+                            }
+
+                            if (@break) return;
+                            break;
+                        }
+
+                    case Value.ValueType.Char:
+                        {
+                            bool @break;
+                            if (range.Inclusive)
+                            {
+                                @break = it.Char > end.Char;
+                            }
+                            else
+                            {
+                                @break = it.Char >= end.Char;
+                            }
+
+                            if (@break) return;
+                            break;
+                        }
+
+                    default:
+                        throw new Exception(string.Format("Internal Error: Range<{0}>.", it.Type));
+                }
+
+                VM @new = new VM(vm, vm.Global);
+                if (DoExecution(@new, it, count))
+                {
+                    break;
+                }
+
+                count++;
+
+                switch (it.Type)
+                {
+                    case Value.ValueType.Number:
+                        it = new NumberValue(it.Number + 1);
+                        break;
+
+                    case Value.ValueType.Char:
+                        it = new CharValue((char)(it.Char + 1));
+                        break;
+
+                    default:
+                        throw new Exception(string.Format("Internal Error: Range<{0}>.", it.Type));
+                }
+            }
+        }
+
+        private bool DoExecution(VM vm, Value it, int count)
+        {
+            vm.Variables.Add(iter, it);
+            if (counter != null) vm.Variables.Add(counter, new NumberValue(count));
+
+            try
+            {
+                body.Execute(vm);
+            }
+            catch (BreakStatement.Signal)
+            {
+                return true;
+            }
+            catch (ContinueStatement.Signal)
+            {
+            }
+
+            return false;
+        }
+    }
+
     public class BreakStatement : IAST
     {
         public BreakStatement()
@@ -466,8 +646,7 @@ namespace CustomProject
 
         public Value Execute(VM vm)
         {
-            var @class = new ClassValue(name);
-
+            ClassValue super = null;
             if (superClass != null)
             {
                 if (!vm.Constants.ContainsKey(superClass))
@@ -478,11 +657,17 @@ namespace CustomProject
                 Value superClassValue = vm.Constants[superClass];
                 Value.AssertType(Value.ValueType.Class, superClassValue,
                     "Cannot inherit from something of type '{0}'.", superClassValue.Type);
-                ClassValue super = superClassValue.Class;
+                super = superClassValue.Class;
+            }
 
+            var @class = new ClassValue(name, super);
+
+            if (super != null)
+            {
                 foreach (var method in super.Methods)
                 {
                     string methodName = method.Key;
+                    if (methodName == "<SUPER>") continue;
                     if (method.Key == "init") methodName = "<SUPER>";
                     @class.Methods[methodName] = method.Value;
                 }
@@ -517,16 +702,49 @@ namespace CustomProject
             switch (inst.Type)
             {
                 case Value.ValueType.Instance:
-                    return MemberReferenceInstance(vm, inst as InstanceValue);
+                    return MemberReferenceInstance(inst as InstanceValue);
+
+                case Value.ValueType.String:
+                    return MemberReferenceString(inst as StringValue);
+
+                case Value.ValueType.List:
+                    return MemberReferenceList(inst as ListValue);
 
                 default:
                     throw new Exception(string.Format("Cannot refer to members of something of type '{0}'.", inst.Type));
             }
         }
 
-        private Value MemberReferenceInstance(VM vm, InstanceValue value)
+        private Value MemberReferenceInstance(InstanceValue value)
         {
             return value.Fields[Member];
+        }
+
+        private Value MemberReferenceString(StringValue value)
+        {
+            switch (Member)
+            {
+                case "length":
+                    return new NumberValue(value.String.Length);
+
+                default:
+                    throw new Exception(string.Format("'{0}' is not a member of 'String'.", Member));
+            }
+        }
+
+        private Value MemberReferenceList(ListValue value)
+        {
+            switch (Member)
+            {
+                case "capacity":
+                    return new NumberValue(value.List.Capacity);
+
+                case "length":
+                    return new NumberValue(value.List.Count);
+
+                default:
+                    throw new Exception(string.Format("'{0}' is not a member of 'List'.", Member));
+            }
         }
     }
 }

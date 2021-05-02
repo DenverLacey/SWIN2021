@@ -328,42 +328,46 @@ namespace CustomProject
 
         private Value InvokeClass(VM vm, ClassValue value)
         {
-            var init = value.Methods["init"].Lambda;
             var self = new InstanceValue(value);
 
-            Block args = Rhs as Block;
-            if (args == null)
+            if (value.Methods.ContainsKey("init"))
             {
-                throw new Exception("Internal: 'rhs' of 'Invocation' was not a 'Block'.");
-            }
+                var init = value.Methods["init"].Lambda;
 
-            if (args.Expressions.Count != init.Args.Count)
-            {
-                throw new Exception(string.Format(
-                    "Argument Mistmatch! {0}'s initializer takes {1} argument(s) but was given {2}.",
-                    value.Name, init.Args.Count, args.Expressions.Count));
-            }
-
-            VM @new = new VM(null, vm.Global);
-            @new.Constants.Add(value.Name, value);
-            @new.Constants.Add("self", self);
-
-            for (int i = 0; i < init.Args.Count; i++)
-            {
-                string argId = init.Args[i];
-                Value arg = args.Expressions[i].Execute(vm);
-                @new.Variables.Add(argId, arg);
-            }
-
-            try
-            {
-                init.Body.Execute(@new);
-            }
-            catch (ReturnStatement.Signal sig)
-            {
-                if (!sig.Value.IsNil())
+                Block args = Rhs as Block;
+                if (args == null)
                 {
-                    throw new Exception("Cannot return a non-nil value from class initializer.");
+                    throw new Exception("Internal: 'rhs' of 'Invocation' was not a 'Block'.");
+                }
+
+                if (args.Expressions.Count != init.Args.Count)
+                {
+                    throw new Exception(string.Format(
+                        "Argument Mistmatch! {0}'s initializer takes {1} argument(s) but was given {2}.",
+                        value.Name, init.Args.Count, args.Expressions.Count));
+                }
+
+                VM @new = new VM(null, vm.Global);
+                @new.Constants.Add(value.Name, value);
+                @new.Constants.Add("self", self);
+
+                for (int i = 0; i < init.Args.Count; i++)
+                {
+                    string argId = init.Args[i];
+                    Value arg = args.Expressions[i].Execute(vm);
+                    @new.Variables.Add(argId, arg);
+                }
+
+                try
+                {
+                    init.Body.Execute(@new);
+                }
+                catch (ReturnStatement.Signal sig)
+                {
+                    if (!sig.Value.IsNil())
+                    {
+                        throw new Exception("Cannot return a non-nil value from class initializer.");
+                    }
                 }
             }
 
@@ -419,6 +423,40 @@ namespace CustomProject
             }
 
             return ret;
+        }
+    }
+
+    public class RangeExpression : Binary
+    {
+        bool inclusive;
+
+        public RangeExpression(IAST lhs, IAST rhs, bool inclusive)
+            : base(lhs, rhs)
+        {
+            this.inclusive = inclusive;
+        }
+
+        public override Value Execute(VM vm)
+        {
+            Value start = Lhs.Execute(vm);
+            Value end = Rhs.Execute(vm);
+
+            if (!Value.TypesMatch(start, end))
+            {
+                throw new Exception("start and end values of 'Range' must be the same type.");
+            }
+
+            if (start.Type != Value.ValueType.Number && start.Type != Value.ValueType.Char)
+            {
+                throw new Exception(string.Format("Cannot make a range over '{0}'.", start.Type));
+            }
+
+            if (end.Type != Value.ValueType.Number && end.Type != Value.ValueType.Char)
+            {
+                throw new Exception(string.Format("Cannot make a range over '{0}'.", end.Type));
+            }
+
+            return new RangeValue(start, end, inclusive);
         }
     }
 }

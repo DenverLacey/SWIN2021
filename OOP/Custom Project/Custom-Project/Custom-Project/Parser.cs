@@ -72,6 +72,8 @@ namespace CustomProject
             new ParseRule(Precedence.None, null, null), // KeywordElif
             new ParseRule(Precedence.None, null, null), // KeywordElse
             new ParseRule(Precedence.None, null, null), // KeywordWhile
+            new ParseRule(Precedence.None, null, null), // KeywordFor
+            new ParseRule(Precedence.None, null, null), // KeywordIn
             new ParseRule(Precedence.None, null, null), // KeywordBreak
             new ParseRule(Precedence.None, null, null), // KeywordContinue
             new ParseRule(Precedence.None, null, null), // KeywordReturn
@@ -92,6 +94,8 @@ namespace CustomProject
             new ParseRule(Precedence.Comparison, null, BinaryParseFn), // OpLeftAngleEqual
             new ParseRule(Precedence.Comparison, null, BinaryParseFn), // OpRightAngleEqual
             new ParseRule(Precedence.Call, null, MemberReferenceParseFn), // OpDot
+            new ParseRule(Precedence.Or, null, BinaryParseFn), // OpDoubleDot
+            new ParseRule(Precedence.Or, null, BinaryParseFn), // OpDoubleDotEqual
         };
 
         private static ParseRule GetRule(Token.Kind kind)
@@ -242,6 +246,10 @@ namespace CustomProject
             else if (Next(Token.Kind.KeywordWhile))
             {
                 ParseWhileStatement();
+            }
+            else if (Next(Token.Kind.KeywordFor))
+            {
+                ParseForStatement();
             }
             else if (Next(Token.Kind.KeywordBreak))
             {
@@ -494,6 +502,14 @@ namespace CustomProject
 
                 case Token.Kind.OpRightAngleEqual:
                     ast = new Not(new LessThan(lhs, rhs));
+                    break;
+
+                case Token.Kind.OpDoubleDot:
+                    ast = new RangeExpression(lhs, rhs, false);
+                    break;
+
+                case Token.Kind.OpDoubleDotEqual:
+                    ast = new RangeExpression(lhs, rhs, true);
                     break;
 
                 case Token.Kind.DelimOpenBracket:
@@ -781,6 +797,34 @@ namespace CustomProject
             Block body = ast as Block;
 
             ast = new WhileStatement(cond, body);
+
+            loopDepth--;
+        }
+
+        private void ParseForStatement()
+        {
+            loopDepth++;
+
+            Expect(Token.Kind.Identifier, "Expected identifier after 'for' keyword.");
+            string iter = Previous.source;
+
+            string counter = null;
+            if (Next(Token.Kind.Comma))
+            {
+                Expect(Token.Kind.Identifier, "Expected identifier of counter variable after ','.");
+                counter = Previous.source;
+            }
+
+            Expect(Token.Kind.KeywordIn, "Expected 'in' keyword not found.");
+
+            ParseExpression();
+            IAST iterable = ast;
+
+            Expect(Token.Kind.EndStatement, "Body of for loop must be on subsequent lines.");
+            ParseBlock();
+            Block body = ast as Block;
+
+            ast = new ForStatement(iter, counter, iterable, body);
 
             loopDepth--;
         }
