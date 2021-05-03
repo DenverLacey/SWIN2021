@@ -515,18 +515,16 @@ namespace CustomProject
         private bool ProcessPossibleEndStatement(out Token eos)
         {
             tokenLength = 0;
-            do
-            {
-                if (tokenStart + tokenLength == source.Length || CurrentChar == '\n')
-                {
-                    tokenLength = 1;
-                    eos = new Token(Token.Kind.EndStatement, TokenString, null);
-                    return true;
-                }
-                tokenLength++;
-            } while (char.IsWhiteSpace(CurrentChar) && tokenStart + tokenLength <= source.Length);
 
-            if (CurrentChar == '\0')
+            while (char.IsWhiteSpace(CurrentChar) &&
+                CurrentChar != '\0' &&
+                CurrentChar != '\n')
+            {
+                tokenLength++;
+            }
+
+            if (CurrentChar == '\0' ||
+                CurrentChar == '\n')
             {
                 tokenLength = 1;
                 eos = new Token(Token.Kind.EndStatement, TokenString, null);
