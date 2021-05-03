@@ -309,6 +309,7 @@ namespace CustomProject
     {
         public string Name { get; private set; }
         public Dictionary<string, LambdaValue> Methods { get; private set; }
+        public Dictionary<string, LambdaValue> ClassMethods { get; private set; }
         public ClassValue SuperClass { get; private set; }
 
         public override ClassValue Class { get => this; }
@@ -318,6 +319,7 @@ namespace CustomProject
         {
             Name = name;
             Methods = new Dictionary<string, LambdaValue>();
+            ClassMethods = new Dictionary<string, LambdaValue>();
             SuperClass = superClass;
         }
 
@@ -341,6 +343,11 @@ namespace CustomProject
             foreach (var binding in Methods)
             {
                 builder.AppendFormat("  {0}: {1}\n", binding.Key, binding.Value);
+            }
+
+            foreach (var binding in ClassMethods)
+            {
+                builder.AppendFormat("  class.{0}: {1}\n", binding.Key, binding.Value);
             }
 
             builder.Append("}");

@@ -622,12 +622,14 @@ namespace CustomProject
         string name;
         string superClass;
         List<LambdaExpression> methods;
+        List<LambdaExpression> classMethods;
 
-        public ClassDeclaration(string name, string superClass, List<LambdaExpression> methods)
+        public ClassDeclaration(string name, string superClass, List<LambdaExpression> methods, List<LambdaExpression> classMethods)
         {
             this.name = name;
             this.superClass = superClass;
             this.methods = methods;
+            this.classMethods = classMethods;
         }
 
         public Value Execute(VM vm)
@@ -657,6 +659,11 @@ namespace CustomProject
                     if (method.Key == "init") methodName = "<SUPER>";
                     @class.Methods[methodName] = method.Value;
                 }
+
+                foreach (var method in super.ClassMethods)
+                {
+                    @class.ClassMethods[method.Key] = method.Value;
+                }
             }
 
             foreach (var method in methods)
@@ -664,6 +671,13 @@ namespace CustomProject
                 string methodName = method.Id;
                 LambdaValue methodVal = method.Execute(vm) as LambdaValue;
                 @class.Methods[methodName] = methodVal;
+            }
+
+            foreach (var method in classMethods)
+            {
+                string methodName = method.Id;
+                LambdaValue methodVal = method.Execute(vm) as LambdaValue;
+                @class.ClassMethods[methodName] = methodVal;
             }
 
             vm.Constants.Add(name, @class);

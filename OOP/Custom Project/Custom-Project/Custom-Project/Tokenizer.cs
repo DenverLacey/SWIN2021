@@ -166,7 +166,8 @@ namespace CustomProject
                 Token token = ProcessToken();
                 tokens.Add(token);
                 tokenStart += tokenLength;
-                if (ProcessPossibleEndStatement(out Token eos))
+                if (token.kind != Token.Kind.EndStatement &&
+                    ProcessPossibleEndStatement(out Token eos))
                 {
                     tokens.Add(eos);
                     tokenStart += tokenLength;
@@ -514,12 +515,24 @@ namespace CustomProject
         private bool ProcessPossibleEndStatement(out Token eos)
         {
             tokenLength = 0;
-            if (tokenStart == source.Length || CurrentChar == '\n')
+            do
+            {
+                if (tokenStart + tokenLength == source.Length || CurrentChar == '\n')
+                {
+                    tokenLength = 1;
+                    eos = new Token(Token.Kind.EndStatement, TokenString, null);
+                    return true;
+                }
+                tokenLength++;
+            } while (char.IsWhiteSpace(CurrentChar) && tokenStart + tokenLength <= source.Length);
+
+            if (CurrentChar == '\0')
             {
                 tokenLength = 1;
                 eos = new Token(Token.Kind.EndStatement, TokenString, null);
                 return true;
             }
+
             eos = new Token();
             return false;
         }

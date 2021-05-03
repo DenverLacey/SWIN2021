@@ -390,6 +390,9 @@ namespace CustomProject
                 case Value.ValueType.String:
                     return InvokeBoundMethodString(vm, receiverValue as StringValue, boundMethod.Method);
 
+                case Value.ValueType.Class:
+                    return InvokeBoundMethodClass(vm, receiverValue.Class, boundMethod.Method);
+
                 default:
                     throw new Exception(string.Format("Cannot invoke something of type '{0}'.", receiverValue.Type));
             }
@@ -557,6 +560,62 @@ namespace CustomProject
             }
 
             return new NilValue();
+        }
+
+        private Value InvokeBoundMethodClass(VM vm, ClassValue value, string methodName)
+        {
+            if (!value.ClassMethods.ContainsKey(methodName))
+            {
+                if (value.Methods.ContainsKey(methodName))
+                {
+                    throw new Exception(string.Format(
+                        "'{0}' is not a class method of '{1}'. Requires an instance of the class.",
+                        methodName,
+                        value.Name));
+                }
+                else
+                {
+                    throw new Exception(string.Format("'{0}' is not a method of '{1}'.", methodName, value.Name));
+                }
+            }
+
+            LambdaExpression method = value.ClassMethods[methodName].Lambda;
+
+            Block args = Rhs as Block;
+            if (args == null)
+            {
+                throw new Exception("Internal: 'rhs' of 'Invocation' was not a 'Block'.");
+            }
+
+            if (method.Args.Count != args.Expressions.Count)
+            {
+                throw new Exception(string.Format("'{0}.{1}' takes {2} argument(s) but was given {3}",
+                    value.Name,
+                    methodName,
+                    method.Args.Count,
+                    args.Expressions.Count));
+            }
+
+            VM @new = new VM(null, vm.Global);
+
+            for (int i = 0; i < method.Args.Count; i++)
+            {
+                string argId = method.Args[i];
+                Value arg = args.Expressions[i].Execute(vm);
+                @new.Variables.Add(argId, arg);
+            }
+
+            Value ret;
+            try
+            {
+                ret = method.Body.Execute(@new);
+            }
+            catch (ReturnStatement.Signal sig)
+            {
+                ret = sig.Value;
+            }
+
+            return ret;
         }
     }
 

@@ -704,20 +704,36 @@ namespace CustomProject
             Expect(Token.Kind.EndStatement, "Body of class must be on subsequent lines.");
 
             List<LambdaExpression> methods = new List<LambdaExpression>();
+            List<LambdaExpression> classMethods = new List<LambdaExpression>();
 
             if (!Check(Token.Kind.KeywordEnd))
             {
                 while (Next(Token.Kind.KeywordFn))
                 {
+                    bool classMethod;
+                    if (classMethod = Next(Token.Kind.KeywordClass))
+                    {
+                        Expect(Token.Kind.OpDot, "Expected '.' after 'class' keyword.");
+                    }
+
                     ParseFunctionDeclarationUnwrapped();
-                    methods.Add(ast as LambdaExpression);
+
+                    if (classMethod)
+                    {
+                        classMethods.Add(ast as LambdaExpression);
+                    }
+                    else
+                    {
+                        methods.Add(ast as LambdaExpression);
+                    }
+
                     Expect(Token.Kind.EndStatement, "Methods must be on separate lines.");
                 }
             }
 
             Expect(Token.Kind.KeywordEnd, "Expected 'end' to terminate class declaration.");
 
-            ast = new ClassDeclaration(id, superClass, methods);
+            ast = new ClassDeclaration(id, superClass, methods, classMethods);
         }
 
         private void ParseSuperStatement()
