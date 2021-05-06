@@ -7,7 +7,8 @@ namespace CustomProject
         public static void Main(string[] args)
         {
             string filepath = "source.txt";
-            new Interpreter(filepath);
+            var interpreter = new Interpreter();
+            interpreter.Interpret(filepath);
         }
     }
 }

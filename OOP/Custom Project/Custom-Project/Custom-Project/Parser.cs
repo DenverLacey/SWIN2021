@@ -53,6 +53,7 @@ namespace CustomProject
             new ParseRule(Precedence.None, null, null), // DelimCloseParenthesis
             new ParseRule(Precedence.Call, ListParseFn, BinaryParseFn), // DelimOpenBracket
             new ParseRule(Precedence.None, null, null), // DelimCloseBracket
+            new ParseRule(Precedence.None, LambdaParseFn, null), // DelimPipe
 
             new ParseRule(Precedence.None, LiteralParseFn, null), // LiteralNil
             new ParseRule(Precedence.None, LiteralParseFn, null), // LiteralBoolean
@@ -125,11 +126,6 @@ namespace CustomProject
 
         public Parser()
         {
-            tokens = new List<Token>();
-            error = false;
-            peekIndex = 0;
-            loopDepth = 0;
-            lambdaDepth = 0;
         }
 
         private void Advance()
@@ -188,6 +184,11 @@ namespace CustomProject
 
         public List<IAST> Parse(List<Token> tokens)
         {
+            error = false;
+            peekIndex = 0;
+            loopDepth = 0;
+            lambdaDepth = 0;
+
             this.tokens = tokens;
             List<IAST> program = new List<IAST>();
 
@@ -619,11 +620,14 @@ namespace CustomProject
         private void ParseList()
         {
             ListExpression list = new ListExpression();
-            do
+            if (!Check(Token.Kind.DelimCloseBracket))
             {
-                ParseExpression();
-                list.AddExpression(ast);
-            } while (Next(Token.Kind.Comma) && !Check(Token.Kind.EOF));
+                do
+                {
+                    ParseExpression();
+                    list.AddExpression(ast);
+                } while (Next(Token.Kind.Comma) && !Check(Token.Kind.EOF));
+            }
             Expect(Token.Kind.DelimCloseBracket, "Expected ']' keyword to terminate List literal.");
             ast = list;
         }
@@ -660,14 +664,29 @@ namespace CustomProject
             string id = Previous.source;
 
             Expect(Token.Kind.DelimOpenParenthesis, "Expected '(' after identifier.");
+
             List<string> args = new List<string>();
+            bool varargs = false;
 
             if (!Next(Token.Kind.DelimCloseParenthesis))
             {
                 do
                 {
-                    Expect(Token.Kind.Identifier, "Expected argument identifier.");
-                    args.Add(Previous.source);
+                    if (Next(Token.Kind.Identifier))
+                    {
+                        args.Add(Previous.source);
+                    }
+                    else if (Next(Token.Kind.OpStar))
+                    {
+                        Expect(Token.Kind.Identifier, "Expected an identifier after '*'.");
+                        varargs = true;
+                        args.Add(Previous.source);
+                        break; // no arguments after varargs
+                    }
+                    else
+                    {
+                        Error("Expected an identifier but found '{0}'", Current.source);
+                    }
                 } while (Next(Token.Kind.Comma) && !Check(Token.Kind.EOF));
                 Expect(Token.Kind.DelimCloseParenthesis, "Expected ')' to terminate argument list.");
             }
@@ -676,7 +695,7 @@ namespace CustomProject
             ParseBlock();
             Block body = ast as Block;
 
-            ast = new LambdaExpression(args, body, id);
+            ast = new LambdaExpression(args, body, varargs, id);
 
             lambdaDepth--;
         }
@@ -686,6 +705,54 @@ namespace CustomProject
             ParseFunctionDeclarationUnwrapped();
             var lambda = ast as LambdaExpression;
             ast = new ConstantInstantiation(lambda.Id, lambda);
+        }
+
+        private static void LambdaParseFn(Parser parser)
+        {
+            parser.ParseLambdaExpression();
+        }
+
+        private void ParseLambdaExpression()
+        {
+            List<string> args = new List<string>();
+            bool varargs = false;
+            if (!Next(Token.Kind.DelimPipe))
+            {
+                do
+                {
+                    if (Next(Token.Kind.Identifier))
+                    {
+                        args.Add(Previous.source);
+                    }
+                    else if (Next(Token.Kind.OpStar))
+                    {
+                        Expect(Token.Kind.Identifier, "Expected an identifier after '*'.");
+                        varargs = true;
+                        args.Add(Previous.source);
+                        break; // no arguments after varargs
+                    }
+                    else
+                    {
+                        Error("Expected an identifier but found '{0}'", Current.source);
+                    }
+                } while (Next(Token.Kind.Comma) && !Check(Token.Kind.EOF));
+                Expect(Token.Kind.DelimPipe, "Expected '|' to terminate argument list.");
+            }
+
+            Block body;
+            if (Next(Token.Kind.EndStatement))
+            {
+                ParseBlock();
+                body = ast as Block;
+            }
+            else
+            {
+                body = new Block();
+                ParseExpression();
+                body.AddExpression(ast);
+            }
+
+            ast = new LambdaExpression(args, body, varargs);
         }
 
         private void ParseClassDeclaration()
@@ -710,8 +777,8 @@ namespace CustomProject
             {
                 while (Next(Token.Kind.KeywordFn))
                 {
-                    bool classMethod;
-                    if (classMethod = Next(Token.Kind.KeywordClass))
+                    bool classMethod = Next(Token.Kind.KeywordClass);
+                    if (classMethod)
                     {
                         Expect(Token.Kind.OpDot, "Expected '.' after 'class' keyword.");
                     }

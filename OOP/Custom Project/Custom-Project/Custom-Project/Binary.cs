@@ -288,6 +288,68 @@ namespace CustomProject
             }
         }
 
+        private Value CallWith(LambdaExpression lambda, VM vm)
+        {
+            Value ret;
+            try
+            {
+                ret = lambda.Body.Execute(vm);
+            }
+            catch (ReturnStatement.Signal sig)
+            {
+                ret = sig.Value;
+            }
+
+            return ret;
+        }
+
+        private void SetArguments(VM vm, VM @new, LambdaExpression lambda, List<IAST> args, bool is_varargs)
+        {
+            if (is_varargs)
+            {
+                if (args.Count < lambda.Args.Count - 1)
+                {
+                    throw new Exception(string.Format(
+                        "Argument Mismatch! '{0}' takes at least {1} argument(s) but was given {2}.",
+                        lambda.Id, lambda.Args.Count - 1, args.Count));
+                }
+            }
+            else if (args.Count != lambda.Args.Count)
+            {
+                throw new Exception(string.Format(
+                    "Argument Mistmatch! '{0}' takes {1} argument(s) but was given {2}.",
+                    lambda.Id, lambda.Args.Count, args.Count));
+            }
+
+            if (is_varargs)
+            {
+                for (int i = 0; i < lambda.Args.Count - 1; i++)
+                {
+                    string argId = lambda.Args[i];
+                    Value arg = args[i].Execute(vm);
+                    @new.Variables.Add(argId, arg);
+                }
+
+                List<Value> varargs = new List<Value>();
+                for (int i = lambda.Args.Count - 1; i < args.Count; i++)
+                {
+                    varargs.Add(args[i].Execute(vm));
+                }
+
+                string varargsId = lambda.Args[lambda.Args.Count - 1];
+                @new.Variables.Add(varargsId, new ListValue(varargs));
+            }
+            else
+            {
+                for (int i = 0; i < lambda.Args.Count; i++)
+                {
+                    string argId = lambda.Args[i];
+                    Value arg = args[i].Execute(vm);
+                    @new.Variables.Add(argId, arg);
+                }
+            }
+        }
+
         private Value InvokeLambda(VM vm, LambdaValue value)
         {
             LambdaExpression lambda = value.Lambda;
@@ -297,34 +359,10 @@ namespace CustomProject
                 throw new Exception("Internal: 'rhs' of 'Invocation' was not a 'Block'.");
             }
 
-            if (args.Expressions.Count != lambda.Args.Count)
-            {
-                throw new Exception(string.Format(
-                    "Argument Mistmatch! '{0}' takes {1} argument(s) but was given {2}.",
-                    lambda.Id, lambda.Args.Count, args.Expressions.Count));
-            }
-
             VM @new = new VM(null, vm.Global);
             @new.Constants.Add(lambda.Id, value); // For recursion
-
-            for (int i = 0; i < lambda.Args.Count; i++)
-            {
-                string argId = lambda.Args[i];
-                Value arg = args.Expressions[i].Execute(vm);
-                @new.Variables.Add(argId, arg);
-            }
-
-            Value ret;
-            try
-            {
-                ret = lambda.Body.Execute(@new);
-            }
-            catch (ReturnStatement.Signal sig)
-            {
-                ret = sig.Value;
-            }
-            
-            return ret;
+            SetArguments(vm, @new, lambda, args.Expressions, lambda.IsVarargs());
+            return CallWith(lambda, @new);
         }
 
         private Value InvokeClass(VM vm, ClassValue value)
@@ -341,23 +379,10 @@ namespace CustomProject
                     throw new Exception("Internal: 'rhs' of 'Invocation' was not a 'Block'.");
                 }
 
-                if (args.Expressions.Count != init.Args.Count)
-                {
-                    throw new Exception(string.Format(
-                        "Argument Mistmatch! {0}'s initializer takes {1} argument(s) but was given {2}.",
-                        value.Name, init.Args.Count, args.Expressions.Count));
-                }
-
                 VM @new = new VM(null, vm.Global);
                 @new.Constants.Add(value.Name, value);
                 @new.Constants.Add("self", self);
-
-                for (int i = 0; i < init.Args.Count; i++)
-                {
-                    string argId = init.Args[i];
-                    Value arg = args.Expressions[i].Execute(vm);
-                    @new.Variables.Add(argId, arg);
-                }
+                SetArguments(vm, @new, init, args.Expressions, init.IsVarargs());
 
                 try
                 {
@@ -415,34 +440,10 @@ namespace CustomProject
                 throw new Exception("Internal: 'rhs' of 'Invocation' was not a 'Block'.");
             }
 
-            if (args.Expressions.Count != method.Args.Count)
-            {
-                throw new Exception(string.Format(
-                    "Argument Mistmatch! {0}.{1} takes {2} argument(s) but was given {3}.",
-                    @class.Name, method.Id, method.Args.Count, args.Expressions.Count));
-            }
-
             VM @new = new VM(null, vm.Global);
             @new.Constants.Add("self", receiver);
-
-            for (int i = 0; i < method.Args.Count; i++)
-            {
-                string argId = method.Args[i];
-                Value arg = args.Expressions[i].Execute(vm);
-                @new.Variables.Add(argId, arg);
-            }
-
-            Value ret;
-            try
-            {
-                ret = method.Body.Execute(@new);
-            }
-            catch (ReturnStatement.Signal sig)
-            {
-                ret = sig.Value;
-            }
-
-            return ret;
+            SetArguments(vm, @new, method, args.Expressions, method.IsVarargs());
+            return CallWith(method, @new);
         }
 
         private Value InvokeBoundMethodList(VM vm, List<Value> list, string methodName)
@@ -587,35 +588,9 @@ namespace CustomProject
                 throw new Exception("Internal: 'rhs' of 'Invocation' was not a 'Block'.");
             }
 
-            if (method.Args.Count != args.Expressions.Count)
-            {
-                throw new Exception(string.Format("'{0}.{1}' takes {2} argument(s) but was given {3}",
-                    value.Name,
-                    methodName,
-                    method.Args.Count,
-                    args.Expressions.Count));
-            }
-
             VM @new = new VM(null, vm.Global);
-
-            for (int i = 0; i < method.Args.Count; i++)
-            {
-                string argId = method.Args[i];
-                Value arg = args.Expressions[i].Execute(vm);
-                @new.Variables.Add(argId, arg);
-            }
-
-            Value ret;
-            try
-            {
-                ret = method.Body.Execute(@new);
-            }
-            catch (ReturnStatement.Signal sig)
-            {
-                ret = sig.Value;
-            }
-
-            return ret;
+            SetArguments(vm, @new, method, args.Expressions, method.IsVarargs());
+            return CallWith(method, @new);
         }
     }
 

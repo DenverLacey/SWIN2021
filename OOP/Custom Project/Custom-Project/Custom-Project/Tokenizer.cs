@@ -5,8 +5,6 @@ namespace CustomProject
 {
     public struct Token
     {
-        public static Token EOF { get => new Token(Kind.EOF, "", null); }
-
         public enum Kind
         {
             EOF,
@@ -18,6 +16,7 @@ namespace CustomProject
             DelimCloseParenthesis,
             DelimOpenBracket,
             DelimCloseBracket,
+            DelimPipe,
 
             LiteralNil,
             LiteralBoolean,
@@ -72,6 +71,13 @@ namespace CustomProject
             this.kind = kind;
             this.source = source;
             this.value = value;
+        }
+
+        public static Token EOF { get => new Token(Kind.EOF, "", null); }
+
+        public static Token Error(string err)
+        {
+            return new Token(Kind.Error, err, null);
         }
 
         public override string ToString()
@@ -158,6 +164,9 @@ namespace CustomProject
 
         public List<Token> Tokenize(string source)
         {
+            tokenStart = 0;
+            tokenLength = 0;
+
             this.source = source;
             var tokens = new List<Token>();
 
@@ -244,7 +253,7 @@ namespace CustomProject
 
             if (!success)
             {
-                return new Token(Token.Kind.Error, numberString, null);
+                return Token.Error(numberString);
             }
 
             Value numberVal = new NumberValue(number);
@@ -255,9 +264,14 @@ namespace CustomProject
         {
             // skip " character
             tokenStart++;
-            while (CurrentChar != '"')
+            while (CurrentChar != '"' && CurrentChar != '\0')
             {
                 tokenLength++;
+            }
+
+            if (CurrentChar != '"')
+            {
+                return Token.Error("Expected '\"' to terminate string literal not found.");
             }
 
             string stringString = TokenString;
@@ -274,14 +288,14 @@ namespace CustomProject
         {
             // skip ' character
             tokenStart++;
-            while (CurrentChar != '\'')
+            while (CurrentChar != '\'' && CurrentChar != '\0')
             {
                 tokenLength++;
             }
 
-            if (tokenLength != 1)
+            if (tokenLength != 1 || CurrentChar != '\'')
             {
-                return new Token(Token.Kind.Error, TokenString, null);
+                return Token.Error(TokenString);
             }
 
             string charString = TokenString;
@@ -445,6 +459,9 @@ namespace CustomProject
                     break;
                 case ']':
                     kind = Token.Kind.DelimCloseBracket;
+                    break;
+                case '|':
+                    kind = Token.Kind.DelimPipe;
                     break;
 
                 case '!':

@@ -429,11 +429,11 @@ namespace CustomProject
         private void IterateOverRange(VM vm, RangeValue range)
         {
             Value it = range.Start;
+            Value end = range.End;
             int count = 0;
 
             while (true)
             {
-                Value end = range.End;
                 switch (it.Type)
                 {
                     case Value.ValueType.Number:
@@ -555,16 +555,24 @@ namespace CustomProject
         public Block Body { get; private set; }
         public string Id { get; private set; }
 
-        public LambdaExpression(List<string> args, Block body, string id = "<LAMBDA>")
+        private bool varargs;
+
+        public LambdaExpression(List<string> args, Block body, bool varargs, string id = "<LAMBDA>")
         {
             Args = args;
             Body = body;
+            this.varargs = varargs;
             Id = id;
         }
 
         public Value Execute(VM vm)
         {
             return new LambdaValue(this);
+        }
+
+        public bool IsVarargs()
+        {
+            return varargs;
         }
     }
 

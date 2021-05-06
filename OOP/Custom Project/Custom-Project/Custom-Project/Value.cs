@@ -20,6 +20,7 @@ namespace CustomProject
             Class,
             Instance,
             Range,
+            Native,
         }
 
         public ValueType Type { get; protected set; }
@@ -104,7 +105,7 @@ namespace CustomProject
 
         public virtual InstanceValue Instance
         {
-            get => throw new Exception("Value is not a class.");
+            get => throw new Exception("Value is not an instance.");
         }
 
         public virtual RangeValue Range
@@ -250,7 +251,8 @@ namespace CustomProject
             StringBuilder builder = new StringBuilder("fn(");
             for (int i = 0; i < value.Args.Count; i++)
             {
-                builder.Append(value.Args[i]);
+                bool vararg = i == value.Args.Count - 1 && value.IsVarargs();
+                builder.AppendFormat("{0}{1}", vararg ? "*" : "", value.Args[i]);
                 if (i + 1 < value.Args.Count)
                 {
                     builder.Append(", ");

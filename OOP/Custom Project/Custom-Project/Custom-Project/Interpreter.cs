@@ -10,13 +10,17 @@ namespace CustomProject
         private Parser parser;
         private VM vm;
 
-        public Interpreter(string filepath)
+        public Interpreter()
         {
             tokenizer = new Tokenizer();
             parser = new Parser();
             vm = new VM();
             vm.SetEnvironment(null, vm);
+            LoadPrelude();
+        }
 
+        public void Interpret(string filepath)
+        {
             string source = GetSourceCode(filepath);
             var tokens = tokenizer.Tokenize(source);
             var program = parser.Parse(tokens);
@@ -41,6 +45,26 @@ namespace CustomProject
             byte[] bytes = new byte[fstream.Length];
             fstream.Read(bytes, 0, (int)fstream.Length);
             return Encoding.ASCII.GetString(bytes);
+        }
+
+        private void LoadPrelude()
+        {
+            const string preludeSource =
+            @"
+            class String
+                fn class.concat(*ss)
+                    var result = """"
+                    for s in ss
+                        result.concat(s)
+                    end
+                    result
+                end
+            end
+            ";
+
+            var preludeTokens = tokenizer.Tokenize(preludeSource);
+            var prelude = parser.Parse(preludeTokens);
+            vm.Execute(prelude);
         }
     }
 }
