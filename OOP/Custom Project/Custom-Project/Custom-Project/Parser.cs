@@ -833,25 +833,6 @@ namespace CustomProject
             Expect(Token.Kind.EndStatement, "Body of 'if' statement must be on subsequent lines.");
 
             int indent = Previous.indentation;
-
-            //Block then = new Block();
-
-            //while (!Check(Token.Kind.KeywordEnd) &&
-            //    !Check(Token.Kind.KeywordElif) &&
-            //    !Check(Token.Kind.KeywordElse) &&
-            //    !Check(Token.Kind.EOF))
-            //{
-            //    try
-            //    {
-            //        ParseDeclaration();
-            //        then.AddExpression(ast);
-            //    }
-            //    catch (Exception e)
-            //    {
-            //        HandleError(e);
-            //    }
-            //}
-
             ParseBlock(indent);
             Block then = ast as Block;
 
