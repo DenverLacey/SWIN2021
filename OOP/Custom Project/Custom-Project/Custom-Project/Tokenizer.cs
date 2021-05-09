@@ -8,6 +8,7 @@ namespace CustomProject
         public enum Kind
         {
             EOF,
+            EOL,
             Error,
             EndStatement,
             Comma,
@@ -31,7 +32,6 @@ namespace CustomProject
             KeywordFn,
             KeywordClass,
             KeywordSuper,
-            KeywordEnd,
             KeywordIf,
             KeywordElif,
             KeywordElse,
@@ -63,21 +63,24 @@ namespace CustomProject
         }
 
         public Kind kind;
+        public int indentation;
         public string source;
         public Value value;
 
-        public Token(Kind kind, string source, Value value)
+        public Token(Kind kind, int indentation, string source, Value value)
         {
             this.kind = kind;
+            this.indentation = indentation;
             this.source = source;
             this.value = value;
         }
 
-        public static Token EOF { get => new Token(Kind.EOF, "", null); }
+        public static Token EOF { get => new Token(Kind.EOF, -1, "", null); }
+        public static Token EOL { get => new Token(Kind.EOL, -1, "", null); }
 
-        public static Token Error(string err)
+        public static Token Error(string err, int indentation)
         {
-            return new Token(Kind.Error, err, null);
+            return new Token(Kind.Error, indentation, err, null);
         }
 
         public override string ToString()
@@ -91,6 +94,7 @@ namespace CustomProject
         private string source;
         private int tokenStart;
         private int tokenLength;
+        private int currentIndentation;
 
         private char CurrentChar
         {
@@ -160,27 +164,43 @@ namespace CustomProject
             source = null;
             tokenStart = 0;
             tokenLength = 0;
+            currentIndentation = 0;
         }
 
         public List<Token> Tokenize(string source)
         {
             tokenStart = 0;
             tokenLength = 0;
-
-            this.source = source;
+            currentIndentation = 0;
+            
             var tokens = new List<Token>();
 
-            while (tokenStart < source.Length)
+            foreach (var line in source.Split('\n'))
             {
-                Token token = ProcessToken();
-                tokens.Add(token);
-                tokenStart += tokenLength;
-                if (token.kind != Token.Kind.EndStatement &&
-                    ProcessPossibleEndStatement(out Token eos))
+                if (line.Length == 0)
+                    continue;
+
+                this.source = line;
+                tokenStart = 0;
+
+                int oldIndentation = currentIndentation;
+                ProcessIndentation();
+                if (tokenStart == line.Length)
                 {
-                    tokens.Add(eos);
+                    currentIndentation = oldIndentation;
+                    continue;
+                }
+
+                while (tokenStart < line.Length)
+                {
+                    Token token = ProcessToken();
+                    if (token.kind != Token.Kind.EOL)
+                        tokens.Add(token);
                     tokenStart += tokenLength;
                 }
+
+                tokens.Add(new Token(Token.Kind.EndStatement, currentIndentation, "", null));
+                currentIndentation = 0;
             }
 
             tokens.Add(Token.EOF);
@@ -196,6 +216,15 @@ namespace CustomProject
             }
         }
 
+        private void ProcessIndentation()
+        {
+            while (tokenStart < source.Length && char.IsWhiteSpace(source[tokenStart]))
+            {
+                currentIndentation++;
+                tokenStart++;
+            }
+        }
+
         private Token ProcessToken()
         {
             tokenLength = 0;
@@ -206,7 +235,7 @@ namespace CustomProject
 
             if (tokenStart == source.Length)
             {
-                return Token.EOF;
+                return Token.EOL;
             }
 
             if (char.IsDigit(source[tokenStart]))
@@ -253,11 +282,11 @@ namespace CustomProject
 
             if (!success)
             {
-                return Token.Error(numberString);
+                return Token.Error(numberString, currentIndentation);
             }
 
             Value numberVal = new NumberValue(number);
-            return new Token(Token.Kind.LiteralNumber, numberString, numberVal);
+            return new Token(Token.Kind.LiteralNumber, currentIndentation, numberString, numberVal);
         }
 
         private Token ProcessString()
@@ -271,12 +300,12 @@ namespace CustomProject
 
             if (CurrentChar != '"')
             {
-                return Token.Error("Expected '\"' to terminate string literal not found.");
+                return Token.Error("Expected '\"' to terminate string literal not found.", currentIndentation);
             }
 
             string stringString = TokenString;
             Value stringVal = new StringValue(stringString);
-            Token token = new Token(Token.Kind.LiteralString, stringString, stringVal);
+            Token token = new Token(Token.Kind.LiteralString, currentIndentation, stringString, stringVal);
 
             // skip last " character
             tokenLength++;
@@ -295,12 +324,12 @@ namespace CustomProject
 
             if (tokenLength != 1 || CurrentChar != '\'')
             {
-                return Token.Error(TokenString);
+                return Token.Error(TokenString, currentIndentation);
             }
 
             string charString = TokenString;
             Value charVal = new CharValue(charString[0]);
-            Token token = new Token(Token.Kind.LiteralChar, charString, charVal);
+            Token token = new Token(Token.Kind.LiteralChar, currentIndentation, charString, charVal);
 
             // skip last ' character
             tokenLength++;
@@ -364,10 +393,6 @@ namespace CustomProject
                     kind = Token.Kind.KeywordSuper;
                     break;
 
-                case "end":
-                    kind = Token.Kind.KeywordEnd;
-                    break;
-
                 case "if":
                     kind = Token.Kind.KeywordIf;
                     break;
@@ -413,7 +438,7 @@ namespace CustomProject
                     break;
             }
 
-            return new Token(kind, word, value);
+            return new Token(kind, currentIndentation, word, value);
         }
 
         private Token ProcessOperator()
@@ -443,9 +468,6 @@ namespace CustomProject
                     break;
                 case ',':
                     kind = Token.Kind.Comma;
-                    break;
-                case ';':
-                    kind = Token.Kind.EndStatement;
                     break;
 
                 case '(':
@@ -526,30 +548,7 @@ namespace CustomProject
                     break;
             }
             string opString = TokenString;
-            return new Token(kind, opString, null);
-        }
-
-        private bool ProcessPossibleEndStatement(out Token eos)
-        {
-            tokenLength = 0;
-
-            while (char.IsWhiteSpace(CurrentChar) &&
-                CurrentChar != '\0' &&
-                CurrentChar != '\n')
-            {
-                tokenLength++;
-            }
-
-            if (CurrentChar == '\0' ||
-                CurrentChar == '\n')
-            {
-                tokenLength = 1;
-                eos = new Token(Token.Kind.EndStatement, TokenString, null);
-                return true;
-            }
-
-            eos = new Token();
-            return false;
+            return new Token(kind, currentIndentation, opString, null);
         }
     }
 }

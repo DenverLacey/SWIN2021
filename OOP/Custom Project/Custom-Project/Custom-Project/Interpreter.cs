@@ -56,10 +56,7 @@ namespace CustomProject
                     var result = """"
                     for s in ss
                         result.concat(s)
-                    end
                     result
-                end
-            end
             ";
 
             var preludeTokens = tokenizer.Tokenize(preludeSource);

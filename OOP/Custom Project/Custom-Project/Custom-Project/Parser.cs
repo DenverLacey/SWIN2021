@@ -45,6 +45,7 @@ namespace CustomProject
         private static ParseRule[] parseRules = new ParseRule[]
         {
             new ParseRule(Precedence.None, null, null), // EOF
+            new ParseRule(Precedence.None, null, null), // EOL
             new ParseRule(Precedence.None, null, null), // Error
             new ParseRule(Precedence.None, null, null), // EndStatement
             new ParseRule(Precedence.None, null, null), // Comma
@@ -68,7 +69,6 @@ namespace CustomProject
             new ParseRule(Precedence.None, null, null), // KeywordFn
             new ParseRule(Precedence.None, null, null), // KeywordClass
             new ParseRule(Precedence.None, null, null), // KeywordSuper
-            new ParseRule(Precedence.None, null, null), // KeywordEnd
             new ParseRule(Precedence.None, null, null), // KeywordIf
             new ParseRule(Precedence.None, null, null), // KeywordElif
             new ParseRule(Precedence.None, null, null), // KeywordElse
@@ -218,10 +218,12 @@ namespace CustomProject
             if (Next(Token.Kind.KeywordVar))
             {
                 ParseVariableInstantiation(InstantiationKind.Variable);
+                Expect(Token.Kind.EndStatement, "Unexpected expression(s) at the end of statement");
             }
             else if (Next(Token.Kind.KeywordConst))
             {
                 ParseVariableInstantiation(InstantiationKind.Constant);
+                Expect(Token.Kind.EndStatement, "Unexpected expression(s) at the end of statement");
             }
             else if (Next(Token.Kind.KeywordFn))
             {
@@ -235,7 +237,6 @@ namespace CustomProject
             {
                 ParseStatement();
             }
-            Expect(Token.Kind.EndStatement, "Unexpected expression(s) at the end of statement");
         }
 
         private void ParseStatement()
@@ -256,28 +257,34 @@ namespace CustomProject
             {
                 Assert(loopDepth != 0, "Encountered 'break' statement outside of a loop.");
                 ParseBreakStatement();
+                Expect(Token.Kind.EndStatement, "Unexpected expression(s) at the end of statement");
             }
             else if (Next(Token.Kind.KeywordContinue))
             {
                 Assert(loopDepth != 0, "Encountered 'continue' statement outside of a loop.");
                 ParseContinueStatement();
+                Expect(Token.Kind.EndStatement, "Unexpected expression(s) at the end of statement");
             }
             else if (Next(Token.Kind.KeywordReturn))
             {
                 Assert(lambdaDepth != 0, "Encountered 'return' statement outside of function.");
                 ParseReturnStatement();
+                Expect(Token.Kind.EndStatement, "Unexpected expression(s) at the end of statement");
             }
             else if (Next(Token.Kind.KeywordPrint))
             {
                 ParsePrintStatement();
+                Expect(Token.Kind.EndStatement, "Unexpected expression(s) at the end of statement");
             }
             else if (Next(Token.Kind.KeywordSuper))
             {
                 ParseSuperStatement();
+                Expect(Token.Kind.EndStatement, "Unexpected expression(s) at the end of statement");
             }
             else
             {
                 ParseExpression();
+                Expect(Token.Kind.EndStatement, "Unexpected expression(s) at the end of statement");
             }
         }
 
@@ -332,10 +339,10 @@ namespace CustomProject
             }
         }
 
-        private void ParseBlock()
+        private void ParseBlock(int indentation)
         {
             Block block = new Block();
-            while (!Check(Token.Kind.KeywordEnd) && !Check(Token.Kind.EOF))
+            while (Current.indentation > indentation)
             {
                 try
                 {
@@ -347,7 +354,6 @@ namespace CustomProject
                     HandleError(e);
                 }
             }
-            Expect(Token.Kind.KeywordEnd, "Expected 'end' keyword to terminate block.");
             ast = block;
         }
 
@@ -692,7 +698,7 @@ namespace CustomProject
             }
 
             Expect(Token.Kind.EndStatement, "Body of function must be on subsequent lines.");
-            ParseBlock();
+            ParseBlock(Previous.indentation);
             Block body = ast as Block;
 
             ast = new LambdaExpression(args, body, varargs, id);
@@ -742,7 +748,7 @@ namespace CustomProject
             Block body;
             if (Next(Token.Kind.EndStatement))
             {
-                ParseBlock();
+                ParseBlock(Previous.indentation);
                 body = ast as Block;
             }
             else
@@ -773,7 +779,7 @@ namespace CustomProject
             List<LambdaExpression> methods = new List<LambdaExpression>();
             List<LambdaExpression> classMethods = new List<LambdaExpression>();
 
-            if (!Check(Token.Kind.KeywordEnd))
+            if (Current.indentation > Previous.indentation)
             {
                 while (Next(Token.Kind.KeywordFn))
                 {
@@ -793,12 +799,8 @@ namespace CustomProject
                     {
                         methods.Add(ast as LambdaExpression);
                     }
-
-                    Expect(Token.Kind.EndStatement, "Methods must be on separate lines.");
                 }
             }
-
-            Expect(Token.Kind.KeywordEnd, "Expected 'end' to terminate class declaration.");
 
             ast = new ClassDeclaration(id, superClass, methods, classMethods);
         }
@@ -830,23 +832,28 @@ namespace CustomProject
 
             Expect(Token.Kind.EndStatement, "Body of 'if' statement must be on subsequent lines.");
 
-            Block then = new Block();
+            int indent = Previous.indentation;
 
-            while (!Check(Token.Kind.KeywordEnd) &&
-                !Check(Token.Kind.KeywordElif) &&
-                !Check(Token.Kind.KeywordElse) &&
-                !Check(Token.Kind.EOF))
-            {
-                try
-                {
-                    ParseDeclaration();
-                    then.AddExpression(ast);
-                }
-                catch (Exception e)
-                {
-                    HandleError(e);
-                }
-            }
+            //Block then = new Block();
+
+            //while (!Check(Token.Kind.KeywordEnd) &&
+            //    !Check(Token.Kind.KeywordElif) &&
+            //    !Check(Token.Kind.KeywordElse) &&
+            //    !Check(Token.Kind.EOF))
+            //{
+            //    try
+            //    {
+            //        ParseDeclaration();
+            //        then.AddExpression(ast);
+            //    }
+            //    catch (Exception e)
+            //    {
+            //        HandleError(e);
+            //    }
+            //}
+
+            ParseBlock(indent);
+            Block then = ast as Block;
 
             IAST @else = null;
             if (Next(Token.Kind.KeywordElif))
@@ -857,12 +864,8 @@ namespace CustomProject
             else if (Next(Token.Kind.KeywordElse))
             {
                 Expect(Token.Kind.EndStatement, "Body of 'else' block must be on subsequent lines.");
-                ParseBlock();
+                ParseBlock(indent);
                 @else = ast;
-            }
-            else
-            {
-                Expect(Token.Kind.KeywordEnd, "Expected 'end' keyword after 'if' statement.");
             }
 
             ast = new IfStatement(cond, then, @else);
@@ -876,7 +879,7 @@ namespace CustomProject
             IAST cond = ast;
 
             Expect(Token.Kind.EndStatement, "Body of 'while' statement must be on subsequent lines.");
-            ParseBlock();
+            ParseBlock(Previous.indentation);
             Block body = ast as Block;
 
             ast = new WhileStatement(cond, body);
@@ -904,7 +907,7 @@ namespace CustomProject
             IAST iterable = ast;
 
             Expect(Token.Kind.EndStatement, "Body of for loop must be on subsequent lines.");
-            ParseBlock();
+            ParseBlock(Previous.indentation);
             Block body = ast as Block;
 
             ast = new ForStatement(iter, counter, iterable, body);
