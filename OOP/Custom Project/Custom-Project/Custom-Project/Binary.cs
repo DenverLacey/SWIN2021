@@ -450,7 +450,7 @@ namespace CustomProject
         {
             switch (methodName)
             {
-                case "push":
+                case "add":
                     {
                         Block args = Rhs as Block;
                         if (args == null)
@@ -460,7 +460,7 @@ namespace CustomProject
 
                         if (args.Expressions.Count != 1)
                         {
-                            throw new Exception(string.Format("Argument Mistmatch! List.push takes 1 argument(s) but was given {0}.", args.Expressions.Count));
+                            throw new Exception(string.Format("Argument Mistmatch! List.add takes 1 argument(s) but was given {0}.", args.Expressions.Count));
                         }
 
                         Value value = args.Expressions[0].Execute(vm);
