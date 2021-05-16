@@ -303,8 +303,10 @@ namespace CustomProject
             return ret;
         }
 
-        private void SetArguments(VM vm, VM @new, LambdaExpression lambda, List<IAST> args, bool is_varargs)
+        private void SetArguments(VM vm, VM @new, LambdaExpression lambda, List<IAST> args)
         {
+            bool is_varargs = lambda.IsVarargs();
+
             if (is_varargs)
             {
                 if (args.Count < lambda.Args.Count - 1)
@@ -361,7 +363,7 @@ namespace CustomProject
 
             VM @new = new VM(null, vm.Global);
             @new.Constants.Add(lambda.Id, value); // For recursion
-            SetArguments(vm, @new, lambda, args.Expressions, lambda.IsVarargs());
+            SetArguments(vm, @new, lambda, args.Expressions);
             return CallWith(lambda, @new);
         }
 
@@ -382,7 +384,7 @@ namespace CustomProject
                 VM @new = new VM(null, vm.Global);
                 @new.Constants.Add(value.Name, value);
                 @new.Constants.Add("self", self);
-                SetArguments(vm, @new, init, args.Expressions, init.IsVarargs());
+                SetArguments(vm, @new, init, args.Expressions);
 
                 try
                 {
@@ -442,7 +444,7 @@ namespace CustomProject
 
             VM @new = new VM(null, vm.Global);
             @new.Constants.Add("self", receiver);
-            SetArguments(vm, @new, method, args.Expressions, method.IsVarargs());
+            SetArguments(vm, @new, method, args.Expressions);
             return CallWith(method, @new);
         }
 
@@ -589,7 +591,7 @@ namespace CustomProject
             }
 
             VM @new = new VM(null, vm.Global);
-            SetArguments(vm, @new, method, args.Expressions, method.IsVarargs());
+            SetArguments(vm, @new, method, args.Expressions);
             return CallWith(method, @new);
         }
     }

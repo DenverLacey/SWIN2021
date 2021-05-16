@@ -39,7 +39,7 @@ namespace CustomProject
                 catch (Exception e)
                 {
                     Console.WriteLine(e.Message);
-                    return;
+                    break;
                 }
             }
         }

@@ -153,7 +153,7 @@ namespace CustomProject
 
         private bool CheckPrevious(Token.Kind kind)
         {
-            return Previous.kind == kind || Current.kind == Token.Kind.EOF;
+            return Previous.kind == kind;
         }
 
         private bool Next(Token.Kind kind)

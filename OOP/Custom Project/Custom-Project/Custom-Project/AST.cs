@@ -303,12 +303,9 @@ namespace CustomProject
 
         public Value Execute(VM vm)
         {
-            if (!ExecuteThenBlock(vm))
+            if (!ExecuteThenBlock(vm) && @else != null)
             {
-                if (@else != null)
-                {
-                    @else.Execute(vm);
-                }
+                @else.Execute(vm);
             }
             
             return new NilValue();
