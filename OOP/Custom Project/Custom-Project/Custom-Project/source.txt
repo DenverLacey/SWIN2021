@@ -1,0 +1,49 @@
+class Sum
+	fn init(*ns)
+		self.ns = ns
+
+	fn sum()
+		var t = 0
+		for n in self.ns
+			t = t + n
+		t
+
+	fn zip(*ns)
+		var t = []
+		var overlap
+		var excess
+
+		if self.ns.length > ns.length
+			overlap = ns.length
+			excess = self.ns
+		else
+			overlap = self.ns.length
+			excess = ns
+
+		for i in 0..overlap
+			t.add(self.ns[i] + ns[i])
+
+		for i in overlap..excess.length
+			t.add(excess[i])
+
+		t
+
+	fn each(f)
+		for n in self.ns
+			n = f(n)
+
+print "------------"
+
+var s = Sum(1, 2, 3, 4, 5)
+
+const sum = s.sum()
+print sum
+
+const zip = s.zip(4, 3, 2, 1)
+print zip
+
+s.each(|n|
+	print n
+	n * n
+)
+print s.ns

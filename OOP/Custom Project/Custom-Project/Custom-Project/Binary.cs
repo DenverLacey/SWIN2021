@@ -4,9 +4,19 @@ using System.Text;
 
 namespace CustomProject
 {
+    /// <summary>
+    /// Represents any binary operation in the AST.
+    /// </summary>
     public abstract class Binary : IAST
     {
+        /// <summary>
+        /// The left hand side sub-expression of the binary operator.
+        /// </summary>
         public IAST Lhs { get; private set; }
+
+        /// <summary>
+        /// The right hand side sub-expression of the binary operator.
+        /// </summary>
         public IAST Rhs { get; private set; }
 
         public Binary(IAST lhs, IAST rhs)
@@ -18,6 +28,9 @@ namespace CustomProject
         public abstract Value Execute(VM vm);
     }
 
+    /// <summary>
+    /// Represents an equality operation in the AST.
+    /// </summary>
     public class Equality : Binary
     {
         public Equality(IAST lhs, IAST rhs)
@@ -25,6 +38,11 @@ namespace CustomProject
         {
         }
 
+        /// <summary>
+        /// Executes sub-expressions and checks resulting <see cref="Value"/>s for equality.
+        /// </summary>
+        /// <param name="vm">The environment in which to execute the operation.</param>
+        /// <returns>A <see cref="BooleanValue"/>. True if equal. False if not.</returns>
         public override Value Execute(VM vm)
         {
             Value a = Lhs.Execute(vm);
@@ -34,6 +52,9 @@ namespace CustomProject
         }
     }
 
+    /// <summary>
+    /// Represents a numeric addition operation in the AST.
+    /// </summary>
     public class Addition : Binary
     {
         public Addition(IAST lhs, IAST rhs)
@@ -41,6 +62,12 @@ namespace CustomProject
         {
         }
 
+        /// <summary>
+        /// Executes sub-expressions and returns the sum of the resulting <see cref="NumberValue"/>s.
+        /// </summary>
+        /// <param name="vm">The environment in which to execute the operation.</param>
+        /// <returns>A <see cref="NumberValue"/>. The sum of the sub-expressions.</returns>
+        /// <exception cref="Exception">If either sub-expression doesn't return a <see cref="NumberValue"/>.</exception>
         public override Value Execute(VM vm)
         {
             Value a = Lhs.Execute(vm);
@@ -59,6 +86,9 @@ namespace CustomProject
         }
     }
 
+    /// <summary>
+    /// Represents a numeric subtraction operation in the AST.
+    /// </summary>
     public class Subtraction : Binary
     {
         public Subtraction(IAST lhs, IAST rhs)
@@ -66,6 +96,12 @@ namespace CustomProject
         {
         }
 
+        /// <summary>
+        /// Executes sub-expressions and returns the difference between the resulting <see cref="NumberValue"/>s.
+        /// </summary>
+        /// <param name="vm">The environment in which to execute the operation.</param>
+        /// <returns>A <see cref="NumberValue"/>. The difference between the sub-expressions.</returns>
+        /// <exception cref="Exception">If either sub-expression doesn't return a <see cref="NumberValue"/>.</exception>
         public override Value Execute(VM vm)
         {
             Value a = Lhs.Execute(vm);
@@ -84,6 +120,9 @@ namespace CustomProject
         }
     }
 
+    /// <summary>
+    /// Represents a numeric multiplication operation in the AST.
+    /// </summary>
     public class Multiplication : Binary
     {
         public Multiplication(IAST lhs, IAST rhs)
@@ -91,6 +130,12 @@ namespace CustomProject
         {
         }
 
+        /// <summary>
+        /// Executes sub-expressions and returns the product of the resulting <see cref="NumberValue"/>s.
+        /// </summary>
+        /// <param name="vm">The environment in which to execute the operation.</param>
+        /// <returns>A <see cref="NumberValue"/>. The product of the sub-expressions.</returns>
+        /// <exception cref="Exception">If either sub-expression doesn't return a <see cref="NumberValue"/>.</exception>
         public override Value Execute(VM vm)
         {
             Value a = Lhs.Execute(vm);
@@ -109,6 +154,9 @@ namespace CustomProject
         }
     }
 
+    /// <summary>
+    /// Represents a numeric division operation in the AST.
+    /// </summary>
     public class Division : Binary
     {
         public Division(IAST lhs, IAST rhs)
@@ -116,6 +164,12 @@ namespace CustomProject
         {
         }
 
+        /// <summary>
+        /// Executes sub-expressions and returns the quotient of the resulting <see cref="NumberValue"/>s.
+        /// </summary>
+        /// <param name="vm">The environment in which to execute the operation.</param>
+        /// <returns>A <see cref="NumberValue"/>. The quotient of the sub-expressions.</returns>
+        /// <exception cref="Exception">If either sub-expression doesn't return a <see cref="NumberValue"/>.</exception>
         public override Value Execute(VM vm)
         {
             Value a = Lhs.Execute(vm);
@@ -134,6 +188,9 @@ namespace CustomProject
         }
     }
 
+    /// <summary>
+    /// Represents a boolean or operation in the AST.
+    /// </summary>
     public class Or : Binary
     {
         public Or(IAST lhs, IAST rhs)
@@ -141,6 +198,12 @@ namespace CustomProject
         {
         }
 
+        /// <summary>
+        /// Evaluates Lhs or Rhs with short-circuiting.
+        /// </summary>
+        /// <param name="vm">The environment in which to execute the operation.</param>
+        /// <returns>A <see cref="BooleanValue"/>. True if either sub-expression is true. False if not.</returns>
+        /// <exception cref="Exception">If either sub-experssion doesn't return a <see cref="BooleanValue"/>.</exception>
         public override Value Execute(VM vm)
         {
             Value a = Lhs.Execute(vm);
@@ -161,6 +224,9 @@ namespace CustomProject
         }
     }
 
+    /// <summary>
+    /// Represents a boolean and operation in the AST.
+    /// </summary>
     public class And : Binary
     {
         public And(IAST lhs, IAST rhs)
@@ -168,6 +234,12 @@ namespace CustomProject
         {
         }
 
+        /// <summary>
+        /// Evaluates Lhs and Rhs with short-circuiting.
+        /// </summary>
+        /// <param name="vm">The environment in which to execute the operation.</param>
+        /// <returns>A <see cref="BooleanValue"/>. True if both sub-expression are true. False if not.</returns>
+        /// <exception cref="Exception">if either sub-expression doesn't return a <see cref="BooleanValue"/>.</exception>
         public override Value Execute(VM vm)
         {
             Value a = Lhs.Execute(vm);
@@ -188,6 +260,9 @@ namespace CustomProject
         }
     }
 
+    /// <summary>
+    /// Represents a numeric less-than operation in the AST.
+    /// </summary>
     public class LessThan : Binary
     {
         public LessThan(IAST lhs, IAST rhs)
@@ -195,6 +270,12 @@ namespace CustomProject
         {
         }
 
+        /// <summary>
+        /// Evaluates Lhs less-than Rhs and returns the result.
+        /// </summary>
+        /// <param name="vm">The environment in which to execute the operation.</param>
+        /// <returns>A <see cref="BooleanValue"/>. True if Lhs less-than Rhs. False if not.</returns>
+        /// <exception cref="Exception">If either sub-expression doesn't return a <see cref="NumberValue"/>.</exception>
         public override Value Execute(VM vm)
         {
             Value a = Lhs.Execute(vm);
@@ -212,6 +293,9 @@ namespace CustomProject
         }
     }
 
+    /// <summary>
+    /// Represents a numeric greater-than operation in the AST.
+    /// </summary>
     public class GreaterThan : Binary
     {
         public GreaterThan(IAST lhs, IAST rhs)
@@ -219,6 +303,12 @@ namespace CustomProject
         {
         }
 
+        /// <summary>
+        /// Evaluates Lhs > Rhs and returns the result.
+        /// </summary>
+        /// <param name="vm">The environment in which to execute the operation.</param>
+        /// <returns>A <see cref="BooleanValue"/>. True if Lhs > Rhs. False if not.</returns>
+        /// <exception cref="Exception">If either sub-expression doesn't return a <see cref="NumberValue"/>.</exception>
         public override Value Execute(VM vm)
         {
             Value a = Lhs.Execute(vm);
@@ -236,6 +326,9 @@ namespace CustomProject
         }
     }
 
+    /// <summary>
+    /// Represents a List subscript operation in the AST.
+    /// </summary>
     public class Subscript : Binary
     {
         public Subscript(IAST lhs, IAST rhs)
@@ -243,6 +336,12 @@ namespace CustomProject
         {
         }
 
+        /// <summary>
+        /// Returns the <see cref="Value"/> in the list gotten by Lhs at the index gotten by Rhs.
+        /// </summary>
+        /// <param name="vm">The environment in which to execute the operation.</param>
+        /// <returns>The element in the list.</returns>
+        /// <exception cref="Exception">If there was a type error.</exception>
         public override Value Execute(VM vm)
         {
             Value list = Lhs.Execute(vm);
@@ -260,6 +359,9 @@ namespace CustomProject
         }
     }
 
+    /// <summary>
+    /// Represents an invocation in the AST.
+    /// </summary>
     public class Invocation : Binary
     {
         public Invocation(IAST lhs, IAST rhs)
@@ -267,6 +369,12 @@ namespace CustomProject
         {
         }
 
+        /// <summary>
+        /// Invokes a value and returns the resulting <see cref="Value"/>.
+        /// </summary>
+        /// <param name="vm">The environment in which to execute the invocation.</param>
+        /// <returns>A <see cref="BooleanValue"/>. True if Lhs less-than Rhs. False if not.</returns>
+        /// <exception cref="Exception">If Lhs isn't invocable.</exception>
         public override Value Execute(VM vm)
         {
             if (Lhs is BoundMethod boundMethod)
@@ -288,6 +396,12 @@ namespace CustomProject
             }
         }
 
+        /// <summary>
+        /// Calls a lambda with a given <see cref="VM"/>.
+        /// </summary>
+        /// <param name="lambda">The lambda to invoke.</param>
+        /// <param name="vm">The VM to invoke the lambda with.</param>
+        /// <returns>The lambda's return value.</returns>
         private Value CallWith(LambdaExpression lambda, VM vm)
         {
             Value ret;
@@ -303,6 +417,14 @@ namespace CustomProject
             return ret;
         }
 
+        /// <summary>
+        /// Executes argument expressions of the invocation and puts them into '@new's Variables dictionary.
+        /// </summary>
+        /// <param name="vm">The environment in which to execute the arguments.</param>
+        /// <param name="new">Where to put the arguments.</param>
+        /// <param name="lambda">Lambda that will be invoked.</param>
+        /// <param name="args">Arguments being passed to the lambda.</param>
+        /// <exception cref="Exception">If there is an argument mismatch.</exception>
         private void SetArguments(VM vm, VM @new, LambdaExpression lambda, List<IAST> args)
         {
             bool is_varargs = lambda.IsVarargs();
@@ -352,6 +474,13 @@ namespace CustomProject
             }
         }
 
+        /// <summary>
+        /// Invokes a given lambda.
+        /// </summary>
+        /// <param name="vm">The environment in which to invoke the lambda.</param>
+        /// <param name="value">The lambda to invoke.</param>
+        /// <returns>The lambda's return value.</returns>
+        /// <exception cref="Exception">If Rhs doesn't return a <see cref="Block"/>.</exception>
         private Value InvokeLambda(VM vm, LambdaValue value)
         {
             LambdaExpression lambda = value.Lambda;
@@ -363,10 +492,20 @@ namespace CustomProject
 
             VM @new = new VM(null, vm.Global);
             @new.Constants.Add(lambda.Id, value); // For recursion
-            SetArguments(vm, @new, lambda, args.Expressions);
+            SetArguments(vm, @new, lambda, args.Nodes);
             return CallWith(lambda, @new);
         }
 
+        /// <summary>
+        /// Invokes a given class.
+        /// </summary>
+        /// <param name="vm">The environment in which to invoke the class.</param>
+        /// <param name="value">The class to invoke.</param>
+        /// <returns>A new <see cref="InstanceValue"/> of the given class.</returns>
+        /// <exception cref="Exception">
+        /// If Rhs doesn't return a <see cref="Block"/> or
+        /// if 'init()' doesn't return a <see cref="NilValue"/>.
+        /// </exception>
         private Value InvokeClass(VM vm, ClassValue value)
         {
             var self = new InstanceValue(value);
@@ -384,7 +523,7 @@ namespace CustomProject
                 VM @new = new VM(null, vm.Global);
                 @new.Constants.Add(value.Name, value);
                 @new.Constants.Add("self", self);
-                SetArguments(vm, @new, init, args.Expressions);
+                SetArguments(vm, @new, init, args.Nodes);
 
                 try
                 {
@@ -402,6 +541,13 @@ namespace CustomProject
             return self;
         }
 
+        /// <summary>
+        /// Invokes a method with a receiver as an implicit first argument.
+        /// </summary>
+        /// <param name="vm">The environment in which to invoke the method.</param>
+        /// <param name="boundMethod">The bound method with the method's name and the receiver.</param>
+        /// <returns>The method's return value.</returns>
+        /// <exception cref="Exception">If type error.</exception>
         private Value InvokeBoundMethod(VM vm, BoundMethod boundMethod)
         {
             Value receiverValue = boundMethod.Receiver.Execute(vm);
@@ -425,6 +571,17 @@ namespace CustomProject
             }
         }
 
+        /// <summary>
+        /// Invokes a method with an <see cref="InstanceValue"/> as the receiver.
+        /// </summary>
+        /// <param name="vm">The environment in which to invoke the method.</param>
+        /// <param name="receiver">The receiver of the method.</param>
+        /// <param name="methodName">The name of the method.</param>
+        /// <returns>The method's return value.</returns>
+        /// <exception cref="Exception">
+        /// If the methodName isn't a method of the class or
+        /// if Rhs isn't a <see cref="Block"/>.
+        /// </exception>
         private Value InvokeBoundMethodInstance(VM vm, InstanceValue receiver, string methodName)
         {
             ClassValue @class = receiver.Class;
@@ -444,10 +601,22 @@ namespace CustomProject
 
             VM @new = new VM(null, vm.Global);
             @new.Constants.Add("self", receiver);
-            SetArguments(vm, @new, method, args.Expressions);
+            SetArguments(vm, @new, method, args.Nodes);
             return CallWith(method, @new);
         }
 
+        /// <summary>
+        /// Invokes a method with a <see cref="ListValue"/> as the receiver.
+        /// </summary>
+        /// <param name="vm">The environment in which to invoke the method.</param>
+        /// <param name="list">The receiver of the method.</param>
+        /// <param name="methodName">The name of the method.</param>
+        /// <returns>A <see cref="NilValue"/>.</returns>
+        /// <exception cref="Exception">
+        /// If the methodName isn't a method of the class or
+        /// if Rhs isn't a <see cref="Block"/> or
+        /// if there was an argument mismatch.
+        /// </exception>
         private Value InvokeBoundMethodList(VM vm, List<Value> list, string methodName)
         {
             switch (methodName)
@@ -460,12 +629,12 @@ namespace CustomProject
                             throw new Exception("Internal: 'rhs' of 'Invocation' was not a 'Block'.");
                         }
 
-                        if (args.Expressions.Count != 1)
+                        if (args.Nodes.Count != 1)
                         {
-                            throw new Exception(string.Format("Argument Mistmatch! List.add takes 1 argument(s) but was given {0}.", args.Expressions.Count));
+                            throw new Exception(string.Format("Argument Mistmatch! List.add takes 1 argument(s) but was given {0}.", args.Nodes.Count));
                         }
 
-                        Value value = args.Expressions[0].Execute(vm);
+                        Value value = args.Nodes[0].Execute(vm);
                         list.Add(value);
                         break;
                     }
@@ -477,16 +646,16 @@ namespace CustomProject
                             throw new Exception("Internal: 'rhs' of 'Invocation' was not a 'Block'.");
                         }
 
-                        if (args.Expressions.Count != 2)
+                        if (args.Nodes.Count != 2)
                         {
-                            throw new Exception(string.Format("Argument Mistmatch! List.push takes 2 argument(s) but was given {0}.", args.Expressions.Count));
+                            throw new Exception(string.Format("Argument Mistmatch! List.push takes 2 argument(s) but was given {0}.", args.Nodes.Count));
                         }
 
-                        Value idx = args.Expressions[0].Execute(vm);
+                        Value idx = args.Nodes[0].Execute(vm);
                         Value.AssertType(Value.ValueType.Number, idx,
                             "Type mismatch! List.remove expects first argument to be 'Number' but was given '{0}'.", idx.Type);
 
-                        Value value = args.Expressions[1].Execute(vm);
+                        Value value = args.Nodes[1].Execute(vm);
 
                         list.Insert((int)idx.Number, value);
                         break;
@@ -499,12 +668,12 @@ namespace CustomProject
                             throw new Exception("Internal: 'rhs' of 'Invocation' was not a 'Block'.");
                         }
 
-                        if (args.Expressions.Count != 1)
+                        if (args.Nodes.Count != 1)
                         {
-                            throw new Exception(string.Format("Argument Mistmatch! List.push takes 1 argument(s) but was given {0}.", args.Expressions.Count));
+                            throw new Exception(string.Format("Argument Mistmatch! List.push takes 1 argument(s) but was given {0}.", args.Nodes.Count));
                         }
 
-                        Value value = args.Expressions[0].Execute(vm);
+                        Value value = args.Nodes[0].Execute(vm);
                         return new NumberValue(list.FindIndex(v => v.Equal(value)));
                     }
                 case "remove":
@@ -515,12 +684,12 @@ namespace CustomProject
                             throw new Exception("Internal: 'rhs' of 'Invocation' was not a 'Block'.");
                         }
 
-                        if (args.Expressions.Count != 1)
+                        if (args.Nodes.Count != 1)
                         {
-                            throw new Exception(string.Format("Argument Mistmatch! List.push takes 1 argument(s) but was given {0}.", args.Expressions.Count));
+                            throw new Exception(string.Format("Argument Mistmatch! List.push takes 1 argument(s) but was given {0}.", args.Nodes.Count));
                         }
 
-                        Value value = args.Expressions[0].Execute(vm);
+                        Value value = args.Nodes[0].Execute(vm);
                         Value.AssertType(Value.ValueType.Number, value,
                             "Type mismatch! List.remove expects first argument to be 'Number' but was given '{0}'.", value.Type);
 
@@ -535,6 +704,17 @@ namespace CustomProject
             return new NilValue();
         }
 
+        /// <summary>
+        /// Invokes a method with a <see cref="StringValue"/> as the receiver.
+        /// </summary>
+        /// <param name="vm">The environment in which to invoke the method.</param>
+        /// <param name="str">The receiver of the method.</param>
+        /// <param name="methodName">The name of the method.</param>
+        /// <returns>A <see cref="NilValue"/>.</returns>
+        /// <exception cref="Exception">
+        /// If the methodName isn't a method of the class or
+        /// if Rhs isn't a <see cref="Block"/>.
+        /// </exception>
         private Value InvokeBoundMethodString(VM vm, StringValue str, string methodName)
         {
             switch (methodName)
@@ -548,7 +728,7 @@ namespace CustomProject
                         }
 
                         StringBuilder builder = new StringBuilder(str.String);
-                        foreach (IAST expr in args.Expressions)
+                        foreach (IAST expr in args.Nodes)
                         {
                             Value arg = expr.Execute(vm);
                             builder.Append(arg.ToString());
@@ -565,6 +745,17 @@ namespace CustomProject
             return new NilValue();
         }
 
+        /// <summary>
+        /// Invokes a class method that doesn't take an instance as a receiver.
+        /// </summary>
+        /// <param name="vm">The environment in which to invoke the method.</param>
+        /// <param name="value">The class the method belongs to.</param>
+        /// <param name="methodName">The name of the method.</param>
+        /// <returns>The method's return value.</returns>
+        /// <exception cref="Exception">
+        /// If the methodName isn't a method of the class or
+        /// if Rhs isn't a <see cref="Block"/>.
+        /// </exception>
         private Value InvokeBoundMethodClass(VM vm, ClassValue value, string methodName)
         {
             if (!value.ClassMethods.ContainsKey(methodName))
@@ -591,11 +782,14 @@ namespace CustomProject
             }
 
             VM @new = new VM(null, vm.Global);
-            SetArguments(vm, @new, method, args.Expressions);
+            SetArguments(vm, @new, method, args.Nodes);
             return CallWith(method, @new);
         }
     }
 
+    /// <summary>
+    /// Represents a range expression in the AST.
+    /// </summary>
     public class RangeExpression : Binary
     {
         bool inclusive;
@@ -606,6 +800,12 @@ namespace CustomProject
             this.inclusive = inclusive;
         }
 
+        /// <summary>
+        /// Executes sub-expressions and returns a <see cref="RangeValue"/>.
+        /// </summary>
+        /// <param name="vm">The environment in which to execute the sub-expressions.</param>
+        /// <returns>A <see cref="RangeValue"/>. A range between Lhs and Rhs.</returns>
+        /// <exception cref="Exception">If type error.</exception>
         public override Value Execute(VM vm)
         {
             Value start = Lhs.Execute(vm);

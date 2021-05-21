@@ -3,11 +3,25 @@ using System.Collections.Generic;
 
 namespace CustomProject
 {
+    /// <summary>
+    /// Interface for every node in the Abstract Syntax Tree.
+    /// </summary>
     public interface IAST
     {
+        /// <summary>
+        /// Executes the node and its children and returns the result.
+        /// </summary>
+        /// <param name="vm">
+        /// If the node needs to access any variables or constants; or
+        /// add some. It can do so via this parameter.
+        /// </param>
+        /// <returns>The resulting <see cref="Value"/> after executing the node.</returns>
         Value Execute(VM vm);
     }
 
+    /// <summary>
+    /// Represents a literal value in the AST.
+    /// </summary>
     public class Literal : IAST
     {
         Value value;
@@ -17,31 +31,52 @@ namespace CustomProject
             this.value = value;
         }
 
+        /// <summary>
+        /// Gets the literal value.
+        /// </summary>
+        /// <param name="vm">Not needed other than to conform to the <see cref="IAST"/> interface.</param>
+        /// <returns>The literal value.</returns>
         public Value Execute(VM vm)
         {
             return value;
         }
     }
 
+    /// <summary>
+    /// Represents a block of code in the AST.
+    /// </summary>
     public class Block : IAST
     {
-        public List<IAST> Expressions { get; private set; }
+        /// <summary>
+        /// List of all AST nodes that are apart of the block.
+        /// </summary>
+        public List<IAST> Nodes { get; private set; }
 
         public Block()
         {
-            Expressions = new List<IAST>();
+            Nodes = new List<IAST>();
         }
 
-        public void AddExpression(IAST expr)
+        /// <summary>
+        /// Adds an AST node to <see cref="Nodes"/>.
+        /// </summary>
+        /// <param name="node">Node to add.</param>
+        public void AddNode(IAST node)
         {
-            Expressions.Add(expr);
+            Nodes.Add(node);
         }
 
+        /// <summary>
+        /// Executes all nodes in the block under a new scope and returns the result
+        /// of the last node in the block.
+        /// </summary>
+        /// <param name="vm">The parent scope of this block.</param>
+        /// <returns>Result of the last node of the block.</returns>
         public virtual Value Execute(VM vm)
         {
             VM scope = new VM(vm, vm.Global);
             Value ret = new NilValue();
-            foreach (IAST expr in Expressions)
+            foreach (IAST expr in Nodes)
             {
                 ret = expr.Execute(scope);
             }
@@ -49,12 +84,21 @@ namespace CustomProject
         }
     }
 
+    /// <summary>
+    /// Represents a list expression in the AST.
+    /// </summary>
     public class ListExpression : Block
     {
+        /// <summary>
+        /// Executes all element expressions of the list expression and returns them
+        /// as a <see cref="ListValue"/>.
+        /// </summary>
+        /// <param name="vm">Environment to execute the list's element nodes in.</param>
+        /// <returns>The resulting <see cref="ListValue"/>.</returns>
         public override Value Execute(VM vm)
         {
             List<Value> values = new List<Value>();
-            foreach (IAST element in Expressions)
+            foreach (IAST element in Nodes)
             {
                 values.Add(element.Execute(vm));
             }
@@ -62,8 +106,22 @@ namespace CustomProject
         }
     }
 
+    /// <summary>
+    /// Represents a super statement in the AST.
+    /// </summary>
+    /// <remarks>A super statement is used to call a superclass's 'init()' method.</remarks>
     public class SuperStatement : Block
     {
+        /// <summary>
+        /// Calls the init method of an instance's superclass.
+        /// </summary>
+        /// <remarks>
+        /// Expects a constant called 'self' to be present in the VM.
+        /// Expects it to have a superclass with an 'init()' method.
+        /// </remarks>
+        /// <param name="vm">Used to access global scope.</param>
+        /// <returns>A <see cref="NilValue"/>.</returns>
+        /// <exception cref="Exception">If an expectation is not met or another runtime error occurs.</exception>
         public override Value Execute(VM vm)
         {
             if (!vm.Parent.Constants.ContainsKey("self") ||
@@ -82,11 +140,11 @@ namespace CustomProject
 
             LambdaExpression super = selfClass.Methods["<SUPER>"].Lambda;
 
-            if (Expressions.Count != super.Args.Count)
+            if (Nodes.Count != super.Args.Count)
             {
                 throw new Exception(string.Format(
                     "Argument Mistmatch! {0}.super takes {1} argument(s) but was given {2}.",
-                    selfClass.Name, super.Args.Count, Expressions.Count));
+                    selfClass.Name, super.Args.Count, Nodes.Count));
             }
 
             VM @new = new VM(null, vm.Global);
@@ -95,7 +153,7 @@ namespace CustomProject
             for (int i = 0; i < super.Args.Count; i++)
             {
                 string argId = super.Args[i];
-                Value arg = Expressions[i].Execute(vm);
+                Value arg = Nodes[i].Execute(vm);
                 @new.Variables.Add(argId, arg);
             }
 
@@ -117,8 +175,14 @@ namespace CustomProject
         }
     }
 
+    /// <summary>
+    /// Represents an identifier in the AST.
+    /// </summary>
     public class Identifier : IAST
     {
+        /// <summary>
+        /// string representation of the identifier.
+        /// </summary>
         public string Id { get; private set; }
 
         public Identifier(string id)
@@ -126,6 +190,12 @@ namespace CustomProject
             Id = id;
         }
 
+        /// <summary>
+        /// Gets the <see cref="Value"/> currently associated with the identifier.
+        /// </summary>
+        /// <param name="vm">Where the <see cref="Value"/> is expected to be found.</param>
+        /// <returns>The <see cref="Value"/> that corresponds with the identifier.</returns>
+        /// <exception cref="Exception">If identifier cannot be resolved.</exception>
         public Value Execute(VM vm)
         {
             if (vm.Variables.ContainsKey(Id))
@@ -155,6 +225,9 @@ namespace CustomProject
         }
     }
 
+    /// <summary>
+    /// Represents a variable assignment in the AST.
+    /// </summary>
     public class VariableAssignment : IAST
     {
         protected string id;
@@ -166,11 +239,31 @@ namespace CustomProject
             this.assigner = assigner;
         }
 
+        /// <summary>
+        /// Assigns new <see cref="Value"/> to variable that corresponds with
+        /// <see cref="id"/> by executing <see cref="assigner"/>.
+        /// </summary>
+        /// <param name="vm"></param>
+        /// <returns>A <see cref="NilValue"/>.</returns>
+        /// <exception cref="Exception">
+        /// If <see cref="id"/> corresponds with a constant
+        /// or couldn't be resolved at all.
+        /// </exception>
         public virtual Value Execute(VM vm)
         {
             return DoExecute(vm, vm);
         }
 
+        /// <summary>
+        /// Looks for the variable that corresponds with <see cref="id"/> and
+        /// changes its value to the result of executing <see cref="assigner"/>.
+        /// </summary>
+        /// <param name="vm">The environment to execute <see cref="assigner"/> in.</param>
+        /// <param name="lookup">The environment that <see cref="id"/> is expected to exist in.</param>
+        /// <returns>A <see cref="NilValue"/>.</returns>
+        /// <exception cref="Exception">
+        /// If <see cref="id"/> corresponds with a constant or cannot be resolved at all.
+        /// </exception>
         private Value DoExecute(VM vm, VM lookup)
         {
             if (lookup.Variables.ContainsKey(id))
@@ -202,6 +295,9 @@ namespace CustomProject
         }
     }
 
+    /// <summary>
+    /// Represents variable assignment through a subscript operation in the AST.
+    /// </summary>
     public class SubscriptAssignment : IAST
     {
         IAST list;
@@ -215,6 +311,15 @@ namespace CustomProject
             this.assigner = assigner;
         }
 
+        /// <summary>
+        /// Assign new value to the element at the index returned by executing <see cref="subscript"/>
+        /// in the list returned by executing <see cref="list"/>. The new value is returned by
+        /// executing <see cref="assigner"/>.
+        /// </summary>
+        /// <param name="vm">The environment in which the child nodes are executed.</param>
+        /// <returns>A <see cref="NilValue"/>.</returns>
+        /// <exception cref="Exception">If <see cref="list"/> is not a <see cref="ListValue"/> or
+        /// if <see cref="subscript"/> is not a <see cref="NumberValue"/>.</exception>
         public Value Execute(VM vm)
         {
             Value listVal = list.Execute(vm);
@@ -234,6 +339,9 @@ namespace CustomProject
         }
     }
 
+    /// <summary>
+    /// Represents variable assignment through a member reference in the AST.
+    /// </summary>
     public class MemberReferenceAssignment : IAST
     {
         IAST instance;
@@ -247,6 +355,15 @@ namespace CustomProject
             this.assigner = assigner;
         }
 
+        /// <summary>
+        /// Assigns new value to a field of an instance.
+        /// The new value is gotten by executing <see cref="assigner"/>.
+        /// The instance is gotten by executing <see cref="instance"/>.
+        /// <see cref="member"/> is used to access the correct field of the instance.
+        /// </summary>
+        /// <param name="vm">Environment to execute <see cref="instance"/> and <see cref="assigner"/> in.</param>
+        /// <returns>A <see cref="NilValue"/>.</returns>
+        /// <exception cref="Exception">If <see cref="instance"/> doesn't return a <see cref="InstanceValue"/>.</exception>
         public Value Execute(VM vm)
         {
             Value instValue = instance.Execute(vm);
@@ -258,9 +375,22 @@ namespace CustomProject
         }
     }
 
+    /// <summary>
+    /// Represents a bound method in the AST.
+    /// </summary>
+    /// <remarks>
+    /// A bound method is used for calling methods with a dot-call syntax like: <c>x.f()</c>
+    /// </remarks>
     public class BoundMethod : IAST
     {
+        /// <summary>
+        /// The instance that will be passed to the method.
+        /// </summary>
         public IAST Receiver { get; private set; }
+
+        /// <summary>
+        /// Name of the method to call.
+        /// </summary>
         public string Method { get; private set; }
 
         public BoundMethod(IAST receiver, string method)
@@ -269,12 +399,19 @@ namespace CustomProject
             Method = method;
         }
 
+        /// <summary>
+        /// Should not be called! Always throws an exception when called.
+        /// </summary>
+        /// <exception cref="Exception">Shouldn't be called.</exception>
         public Value Execute(VM vm)
         {
             throw new Exception("Internal: Should not execute a BoundMethod directly.");
         }
     }
 
+    /// <summary>
+    /// Represents an if statement in the AST.
+    /// </summary>
     public class IfStatement : IAST
     {
         IAST cond;
@@ -288,6 +425,12 @@ namespace CustomProject
             this.@else = @else;
         }
 
+        /// <summary>
+        /// Executes <see cref="then"/> if <see cref="cond"/> returns a true <see cref="BooleanValue"/>.
+        /// </summary>
+        /// <param name="vm">The environment in which to execute <see cref="cond"/> and <see cref="then"/>.</param>
+        /// <returns>True if <see cref="then"/> was executed. False if not.</returns>
+        /// <exception cref="Exception">If <see cref="cond"/> didn't return a <see cref="BooleanValue"/>.</exception>
         private bool ExecuteThenBlock(VM vm)
         {
             Value condValue = cond.Execute(vm);
@@ -301,6 +444,13 @@ namespace CustomProject
             return false;
         }
 
+        /// <summary>
+        /// Executes <see cref="then"/> if <see cref="cond"/> returns a true <see cref="BooleanValue"/>.
+        /// If not, <see cref="@else"/> is executed if it isn't null.
+        /// </summary>
+        /// <param name="vm">The environment is which to execute the if statement.</param>
+        /// <returns>A <see cref="NilValue"/>.</returns>
+        /// <exception cref="Exception">If <see cref="cond"/> doesn't return a <see cref="BooleanValue"/>.</exception>
         public Value Execute(VM vm)
         {
             if (!ExecuteThenBlock(vm) && @else != null)
@@ -312,6 +462,9 @@ namespace CustomProject
         }
     }
 
+    /// <summary>
+    /// Represents a while loop in the AST.
+    /// </summary>
     public class WhileStatement : IAST
     {
         IAST cond;
@@ -323,6 +476,12 @@ namespace CustomProject
             this.body = body;
         }
 
+        /// <summary>
+        /// Keeps executing <see cref="body"/> while <see cref="cond"/> returns a true <see cref="BooleanValue"/>.
+        /// </summary>
+        /// <param name="vm">The environment in which to execute the while loop.</param>
+        /// <returns>A <see cref="NilValue"/>.</returns>
+        /// <exception cref="Exception">If cond doesn't return a <see cref="BooleanValue"/>.</exception>
         public Value Execute(VM vm)
         {
             while (true)
@@ -351,6 +510,9 @@ namespace CustomProject
         }
     }
 
+    /// <summary>
+    /// Represents a for loop in the AST.
+    /// </summary>
     public class ForStatement : IAST
     {
         string iter;
@@ -366,6 +528,15 @@ namespace CustomProject
             this.body = body;
         }
 
+        /// <summary>
+        /// Executes <see cref="body"/> for each item in <see cref="iterable"/>.
+        /// </summary>
+        /// <param name="vm">The environment in which to execute the for loop.</param>
+        /// <returns>A <see cref="NilValue"/>.</returns>
+        /// <exception cref="Exception">
+        /// If <see cref="iterable"/> returns something that
+        /// can't be iterated over.
+        /// </exception>
         public Value Execute(VM vm)
         {
             Value iterableValue = iterable.Execute(vm);
@@ -389,6 +560,11 @@ namespace CustomProject
             return new NilValue();
         }
 
+        /// <summary>
+        /// Iterates over a list of values.
+        /// </summary>
+        /// <param name="vm">The environment in which to execute the for loop's body.</param>
+        /// <param name="list">List to iterate over.</param>
         private void IterateOverList(VM vm, List<Value> list)
         {
             for (int count = 0; count < list.Count; count++)
@@ -405,6 +581,11 @@ namespace CustomProject
             }
         }
 
+        /// <summary>
+        /// Iterates over a string of characters.
+        /// </summary>
+        /// <param name="vm">The environment in which to execute the for loop's body.</param>
+        /// <param name="str"><see cref="StringValue"/> to iterate over.</param>
         private void IterateOverString(VM vm, StringValue str)
         {
             char[] chars = str.String.ToCharArray();
@@ -423,6 +604,11 @@ namespace CustomProject
             str.ReplaceString(new string(chars));
         }
 
+        /// <summary>
+        /// Iterates over a range of values.
+        /// </summary>
+        /// <param name="vm">The environment in which to execute the for loop's body.</param>
+        /// <param name="range">The range to iterate over.</param>
         private void IterateOverRange(VM vm, RangeValue range)
         {
             Value it = range.Start;
@@ -493,6 +679,13 @@ namespace CustomProject
             }
         }
 
+        /// <summary>
+        /// Executes a single iteration of the for loop.
+        /// </summary>
+        /// <param name="vm">The environment in which to execute the iteration.</param>
+        /// <param name="it"><see cref="Value"/> of this iteration.</param>
+        /// <param name="count">number of iterations already executed.</param>
+        /// <returns>True if need to break loop. False if otherwise.</returns>
         private bool DoExecution(VM vm, Value it, int count)
         {
             vm.Variables.Add(iter, it);
@@ -514,42 +707,74 @@ namespace CustomProject
         }
     }
 
+    /// <summary>
+    /// Represents a break statement in the AST.
+    /// </summary>
     public class BreakStatement : IAST
     {
         public BreakStatement()
         {
         }
 
+        /// <summary>
+        /// Signal used to notify parent nodes that a break statement has been executed.
+        /// </summary>
         public class Signal : Exception
         {
         }
 
+        /// <summary>
+        /// Throws a <see cref="Signal"/>.
+        /// </summary>
         public Value Execute(VM vm)
         {
             throw new Signal();
         }
     }
 
+    /// <summary>
+    /// Represents a continue statement in the AST.
+    /// </summary>
     public class ContinueStatement : IAST
     {
         public ContinueStatement()
         {
         }
 
+        /// <summary>
+        /// Signal used to notify parent nodes that a continue statement has been executed.
+        /// </summary>
         public class Signal : Exception
         {
         }
 
+        /// <summary>
+        /// Throws a <see cref="Signal"/>.
+        /// </summary>
         public Value Execute(VM vm)
         {
             throw new Signal();
         }
     }
 
+    /// <summary>
+    /// Represents a lambda expression or function / method in the AST.
+    /// </summary>
     public class LambdaExpression : IAST
     {
+        /// <summary>
+        /// Names of the lambda's arguments.
+        /// </summary>
         public List<string> Args { get; private set; }
+
+        /// <summary>
+        /// Body of the lambda.
+        /// </summary>
         public Block Body { get; private set; }
+
+        /// <summary>
+        /// Name of the function / method.
+        /// </summary>
         public string Id { get; private set; }
 
         private bool varargs;
@@ -562,17 +787,28 @@ namespace CustomProject
             Id = id;
         }
 
+        /// <summary>
+        /// Returns the <see cref="LambdaExpression"/> wrapped in a <see cref="LambdaValue"/>.
+        /// </summary>
+        /// <returns>A <see cref="LambdaValue"/>.</returns>
         public Value Execute(VM vm)
         {
             return new LambdaValue(this);
         }
 
+        /// <summary>
+        /// Check if lambda allows for a variable number of arguments or not.
+        /// </summary>
+        /// <returns>True if lambda is varargs. False if not.</returns>
         public bool IsVarargs()
         {
             return varargs;
         }
     }
 
+    /// <summary>
+    /// Represents a variable declaration in the AST.
+    /// </summary>
     public class VariableDeclaration : IAST
     {
         protected string id;
@@ -582,6 +818,12 @@ namespace CustomProject
             this.id = id;
         }
 
+        /// <summary>
+        /// Adds a <see cref="NilValue"/> in <see cref="VM.Variables"/> with <see cref="id"/>
+        /// as its key.
+        /// </summary>
+        /// <param name="vm">The environment in which to add the new variable.</param>
+        /// <returns>A <see cref="NilValue"/>.</returns>
         public virtual Value Execute(VM vm)
         {
             vm.Variables.Add(id, new NilValue());
@@ -589,6 +831,9 @@ namespace CustomProject
         }
     }
 
+    /// <summary>
+    /// Represents a variable instatiation in the AST.
+    /// </summary>
     public class VariableInstantiation : VariableDeclaration
     {
         protected IAST initializer;
@@ -599,6 +844,12 @@ namespace CustomProject
             this.initializer = initializer;
         }
 
+        /// <summary>
+        /// Adds a new variable in <see cref="VM.Variables"/> by executing <see cref="initializer"/>
+        /// with 'id' as its key.
+        /// </summary>
+        /// <param name="vm">The environment in which to add the new variable.</param>
+        /// <returns>A <see cref="NilValue"/>.</returns>
         public override Value Execute(VM vm)
         {
             Value value = initializer.Execute(vm);
@@ -607,6 +858,9 @@ namespace CustomProject
         }
     }
 
+    /// <summary>
+    /// Represents a constant instatiation in the AST.
+    /// </summary>
     public class ConstantInstantiation : VariableInstantiation
     {
         public ConstantInstantiation(string id, IAST initializer)
@@ -614,6 +868,12 @@ namespace CustomProject
         {
         }
 
+        /// <summary>
+        /// Adds a new constant to <see cref="VM.Constants"/> by executing 'initializer' with
+        /// 'id' as its key.
+        /// </summary>
+        /// <param name="vm">The environment in which to add the new constant.</param>
+        /// <returns>A <see cref="NilValue"/>.</returns>
         public override Value Execute(VM vm)
         {
             Value value = initializer.Execute(vm);
@@ -622,6 +882,9 @@ namespace CustomProject
         }
     }
 
+    /// <summary>
+    /// Represents a class declaration in the AST.
+    /// </summary>
     public class ClassDeclaration : IAST
     {
         string name;
@@ -637,6 +900,15 @@ namespace CustomProject
             this.classMethods = classMethods;
         }
 
+        /// <summary>
+        /// Adds a new <see cref="ClassValue"/> to <see cref="VM.Constants"/>.
+        /// </summary>
+        /// <param name="vm">The environment in which to add the new class.</param>
+        /// <returns>A <see cref="NilValue"/>.</returns>
+        /// <exception cref="Exception">
+        /// If there is an unresolved identifier for its super class.
+        /// If super class identifier doesn't correspond to a <see cref="ClassValue"/>.
+        /// </exception>
         public Value Execute(VM vm)
         {
             ClassValue super = null;
@@ -690,9 +962,19 @@ namespace CustomProject
         }
     }
 
+    /// <summary>
+    /// Represents a member reference in the AST.
+    /// </summary>
     public class MemberReference : IAST
     {
+        /// <summary>
+        /// Name of the member.
+        /// </summary>
         public string Member { get; private set; }
+
+        /// <summary>
+        /// Instance that owns the member.
+        /// </summary>
         public IAST Instance { get; private set; }
 
         public MemberReference(IAST instance, string member)
@@ -701,6 +983,15 @@ namespace CustomProject
             Instance = instance;
         }
 
+        /// <summary>
+        /// Executes <see cref="Instance"/> and returns the member that corresponds to <see cref="Member"/>.
+        /// </summary>
+        /// <param name="vm">The environment in which to execute <see cref="Instance"/>.</param>
+        /// <returns>The member of the instance.</returns>
+        /// <exception cref="Exception">
+        /// If <see cref="Instance"/> doesn't return a <see cref="InstanceValue"/>, <see cref="StringValue"/> or
+        /// <see cref="ListValue"/>.
+        /// </exception>
         public Value Execute(VM vm)
         {
             Value inst = Instance.Execute(vm);
@@ -720,11 +1011,23 @@ namespace CustomProject
             }
         }
 
+        /// <summary>
+        /// Returns the field that corresponds to <see cref="Member"/>.
+        /// </summary>
+        /// <param name="value">The <see cref="InstanceValue"/>.</param>
+        /// <returns>The instance's field.</returns>
         private Value MemberReferenceInstance(InstanceValue value)
         {
             return value.Fields[Member];
         }
 
+        /// <summary>
+        /// Returns the member of the <see cref="StringValue"/> that corresponds to
+        /// <see cref="Member"/>.
+        /// </summary>
+        /// <param name="value">The <see cref="StringValue"/>.</param>
+        /// <returns>The <see cref="StringValue"/>'s member.</returns>
+        /// <exception cref="Exception">If <see cref="Member"/> isn't a member of <see cref="StringValue"/>.</exception>
         private Value MemberReferenceString(StringValue value)
         {
             switch (Member)
@@ -737,6 +1040,13 @@ namespace CustomProject
             }
         }
 
+        /// <summary>
+        /// Returns the member of the <see cref="ListValue"/> that corresponds to
+        /// <see cref="Member"/>.
+        /// </summary>
+        /// <param name="value">The <see cref="ListValue"/>.</param>
+        /// <returns>The <see cref="ListValue"/>'s member.</returns>
+        /// <exception cref="Exception">If <see cref="Member"/> isn't a member of <see cref="ListValue"/>.</exception>
         private Value MemberReferenceList(ListValue value)
         {
             switch (Member)

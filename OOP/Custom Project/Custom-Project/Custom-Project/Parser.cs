@@ -3,8 +3,20 @@ using System.Collections.Generic;
 
 namespace CustomProject
 {
+    /// <summary>
+    /// Used to turn a list of tokens into an Abstract Syntax Tree.
+    /// </summary>
     public class Parser
     {
+        /// <summary>
+        /// Each token is associated with a precedence level which is used to
+        /// parse the tokens into the correct AST. For example:
+        ///<c>1 + 2 * 3</c>.
+        /// The <c>+</c> operator has a lower precedence than the <c>*</c> operator
+        /// which means the <c>2</c> becomes the left hand side of the <c>*</c> operators
+        /// AST node instead of it becoming the right hand side of the <c>+</c> operators
+        /// AST node.
+        /// </summary>
         private enum Precedence
         {
             None,
@@ -20,14 +32,31 @@ namespace CustomProject
             Primary,
         }
 
+        /// <summary>
+        /// Used to distinguish between instantiation of a variable or a constant
+        /// </summary>
+        /// <example>
+        /// <code>
+        /// ParseVariableInstantiation(Variable);
+        /// ParseVariableInstantiation(Constant);
+        /// </code>
+        /// </example>
         private enum InstantiationKind
         {
             Variable,
             Constant,
         }
 
+        /// <summary>
+        /// Signiture for a <see cref="ParseRule"/>s hook into the parser's private parsing
+        /// methods.
+        /// </summary>
         delegate void ParseFn(Parser p);
 
+        /// <summary>
+        /// Used to associate a token with a <see cref="Precedence"/> level, a prefix parsing method
+        /// and an infix parsing method.
+        /// </summary>
         private struct ParseRule
         {
             public Precedence precedence;
@@ -42,6 +71,12 @@ namespace CustomProject
             }
         }
 
+        /// <summary>
+        /// Look up table for the parse rules of every <see cref="Token.Kind"/>.
+        /// </summary>
+        /// <remarks>
+        /// Use <see cref="GetRule"/> to access a token's <see cref="ParseRule"/>.
+        /// </remarks>
         private static ParseRule[] parseRules = new ParseRule[]
         {
             new ParseRule(Precedence.None, null, null), // EOF
@@ -99,6 +134,11 @@ namespace CustomProject
             new ParseRule(Precedence.Or, null, BinaryParseFn), // OpDoubleDotEqual
         };
 
+        /// <summary>
+        /// Gets the <see cref="ParseRule"/> for a given kind of token.
+        /// </summary>
+        /// <param name="kind">The kind of token that is associated with the desired <see cref="ParseRule"/></param>
+        /// <returns>The <see cref="ParseRule"/> associated with the given kind of token.</returns>
         private static ParseRule GetRule(Token.Kind kind)
         {
             return parseRules[(int)kind];
@@ -109,9 +149,16 @@ namespace CustomProject
         private int peekIndex;
         private int loopDepth;
         private int lambdaDepth;
+
+        /// <summary>
+        /// Used as a intermediate result whilst building the desired AST.
+        /// </summary>
         private IAST ast;
 
+        /// <value>The previous token in the token list.</value>
         private Token Previous { get => tokens[peekIndex - 1]; }
+
+        /// <value>The current token in the token list.</value>
         private Token Current
         {
             get
@@ -128,6 +175,10 @@ namespace CustomProject
         {
         }
 
+        /// <summary>
+        /// Advances to the next token. Guards against going outside the bounds
+        /// of the token list.
+        /// </summary>
         private void Advance()
         {
             if (peekIndex < tokens.Count)
@@ -136,6 +187,14 @@ namespace CustomProject
             }
         }
 
+        /// <summary>
+        /// <list type="bullet">
+        /// <item>Flags that an error has occured.</item>
+        /// <item>Prints error message to the console.</item>
+        /// <item>Advances until the beginning of the next statement.</item>
+        /// </list>
+        /// </summary>
+        /// <param name="err">Exception that encapsulates the error message.</param>
         private void HandleError(Exception err)
         {
             error = true;
@@ -146,16 +205,31 @@ namespace CustomProject
             }
         }
 
+        /// <summary>
+        /// Checks if <see cref="Current"/> is the given token kind.
+        /// </summary>
+        /// <param name="kind">kind of token to check for.</param>
+        /// <returns>True if 'Current' is the correct kind. False if not.</returns>
         private bool Check(Token.Kind kind)
         {
             return Current.kind == kind;
         }
 
+        /// <summary>
+        /// Checks if <see cref="Previous"/> is the given token kind.
+        /// </summary>
+        /// <param name="kind">kind of token to check for.</param>
+        /// <returns>True if <see cref="Previous"/> is the correct kind. False if not.</returns>
         private bool CheckPrevious(Token.Kind kind)
         {
             return Previous.kind == kind;
         }
 
+        /// <summary>
+        /// Advances over <see cref="Current"/> if it matches the given kind.
+        /// </summary>
+        /// <param name="kind">Kind of token to match against.</param>
+        /// <returns>True if it was the correct kind. False if not.</returns>
         private bool Next(Token.Kind kind)
         {
             if (!Check(kind))
@@ -164,11 +238,30 @@ namespace CustomProject
             return true;
         }
 
+        /// <summary>
+        /// Asserts that <see cref="Current"/> is the given kind.
+        /// </summary>
+        /// <param name="kind">Expected token kind.</param>
+        /// <param name="format">Error message format.</param>
+        /// <param name="args">Arguments for the given error message format.</param>
+        /// <exception cref="Exception">
+        /// If 'Current' was not the correct kind then an exception with the error message
+        /// is thrown.
+        /// </exception>
         private void Expect(Token.Kind kind, string format, params object[] args)
         {
             Assert(Next(kind), format, args);
         }
 
+        /// <summary>
+        /// Asserts that a condition is 'true'. throws if 'false'.
+        /// </summary>
+        /// <param name="condition">Condition to verify.</param>
+        /// <param name="format">Format of the error message.</param>
+        /// <param name="args">Arguments to be supplied to the format.</param>
+        /// <exception cref="Exception">
+        /// If 'condition' was 'false' then an exception with the error message is thrown.
+        /// </exception>
         private void Assert(bool condition, string format, params object[] args)
         {
             if (!condition)
@@ -177,11 +270,22 @@ namespace CustomProject
             }
         }
 
+        /// <summary>
+        /// Throws the generated error message as an exception.
+        /// </summary>
+        /// <param name="format">Format of the error string.</param>
+        /// <param name="args">Arguments to be supplied to the format.</param>
+        /// <exception cref="Exception"></exception>
         private void Error(string format, params object[] args)
         {
             throw new Exception(string.Format(format, args));
         }
 
+        /// <summary>
+        /// Generates an Abstract Syntax Tree from the given list of tokens.
+        /// </summary>
+        /// <param name="tokens">List of tokens to parse.</param>
+        /// <returns>The generated Abstract Syntax Tree.</returns>
         public List<IAST> Parse(List<Token> tokens)
         {
             error = false;
@@ -213,6 +317,15 @@ namespace CustomProject
             return program;
         }
 
+        /// <summary>
+        /// Parses a declaration. If no declaration to parse it attempts to parse
+        /// a statement.
+        /// </summary>
+        /// <remarks>
+        /// When this method returns, <see cref="ast"/> will be the AST that represents
+        /// the declartion.
+        /// </remarks>
+        /// <exception cref="Exception">If there is a parse error.</exception>
         private void ParseDeclaration()
         {
             if (Next(Token.Kind.KeywordVar))
@@ -239,6 +352,15 @@ namespace CustomProject
             }
         }
 
+        /// <summary>
+        /// Parses a statement. if no statement to parse it attempts to parse
+        /// an expression.
+        /// </summary>
+        /// <remarks>
+        /// When this method returns, <see cref="ast"/> will be the AST that represents the
+        /// statement.
+        /// </remarks>
+        /// <exception cref="Exception">If there is a parse error.</exception>
         private void ParseStatement()
         {
             if (Next(Token.Kind.KeywordIf))
@@ -288,16 +410,27 @@ namespace CustomProject
             }
         }
 
+        /// <summary>
+        /// Sets <see cref="ast"/> to an instance of a new <see cref="BreakStatement"/>
+        /// </summary>
         private void ParseBreakStatement()
         {
             ast = new BreakStatement();
         }
 
+        /// <summary>
+        /// Sets <see cref="ast"/> to an instance of a new <see cref="ContinueStatement"/>
+        /// </summary>
         private void ParseContinueStatement()
         {
             ast = new ContinueStatement();
         }
 
+        /// <summary>
+        /// Sets <see cref="ast"/> to an instance of a new <see cref="ReturnStatement"/> and
+        /// parses potential return value expression.
+        /// </summary>
+        /// <exception cref="Exception">If parse error is thrown from <see cref="ParseExpression"/>.</exception>
         private void ParseReturnStatement()
         {
             IAST expr = null;
@@ -311,17 +444,31 @@ namespace CustomProject
             ast = new ReturnStatement(expr);
         }
 
+        /// <summary>
+        /// Sets <see cref="ast"/> to an instance of a new <see cref="PrintStatement"/> and parses
+        /// its accompanying expression.
+        /// </summary>
+        /// <exception cref="Exception">If call to <see cref="ParseExpression"/> throws an exception.</exception>
         private void ParsePrintStatement()
         {
             ParseExpression();
             ast = new PrintStatement(ast);
         }
 
+        /// <summary>
+        /// Parses a single expression and sets <see cref="ast"/> to its corresponding AST.
+        /// </summary>
+        /// <exception cref="Exception">If call to <see cref="ParsePrecedence"/> throws an exception.</exception>
         private void ParseExpression()
         {
             ParsePrecedence(Precedence.Assignment);
         }
 
+        /// <summary>
+        /// Parses an expression of a certain <see cref="Precedence"/> level.
+        /// </summary>
+        /// <param name="prec"><see cref="Precedence"/> level to parse at.</param>
+        /// <exception cref="Exception">If calls to <see cref="GetRule"/> return a rule without a <see cref="ParseFn"/>.</exception>
         private void ParsePrecedence(Precedence prec)
         {
             Advance();
@@ -339,6 +486,10 @@ namespace CustomProject
             }
         }
 
+        /// <summary>
+        /// Parses an entire block of code given that block's indentation.
+        /// </summary>
+        /// <param name="indentation">Indentation of the block.</param>
         private void ParseBlock(int indentation)
         {
             Block block = new Block();
@@ -347,7 +498,7 @@ namespace CustomProject
                 try
                 {
                     ParseDeclaration();
-                    block.AddExpression(ast);
+                    block.AddNode(ast);
                 }
                 catch (Exception e)
                 {
@@ -357,6 +508,14 @@ namespace CustomProject
             ast = block;
         }
 
+        /// <summary>
+        /// Parses a Variable / Constant Instantaition statement.
+        /// </summary>
+        /// <param name="instKind">Whether the variable is constant or not.</param>
+        /// <exception cref="Exception">
+        /// If call to <see cref="ParseExpression"/> throws or
+        /// if 'instKind' is an invalid <see cref="InstantiationKind"/>.
+        /// </exception>
         private void ParseVariableInstantiation(InstantiationKind instKind)
         {
             Expect(Token.Kind.Identifier, "Expected an identifier after '{0}' keyword.",
@@ -392,42 +551,74 @@ namespace CustomProject
             }
         }
 
+        /// <summary>
+        /// Hook into <see cref="ParseGroup"/>.
+        /// </summary>
+        /// <param name="parser"><see cref="Parser"/> used to parse group expression.</param>
         private static void GroupParseFn(Parser parser)
         {
             parser.ParseGroup();
         }
 
+        /// <summary>
+        /// Parses a group expression / parenthesized expression.
+        /// </summary>
+        /// <exception cref="Exception">If ')' token is not present.</exception>
         private void ParseGroup()
         {
             ParseExpression();
             Expect(Token.Kind.DelimCloseParenthesis, "Expected ')' to terminate parenthesised expression.");
         }
 
+        /// <summary>
+        /// Hook into <see cref="ParseLiteral"/>.
+        /// </summary>
+        /// <param name="parser"><see cref="Parser"/> used to parse literal.</param>
         private static void LiteralParseFn(Parser parser)
         {
             parser.ParseLiteral();
         }
 
+        /// <summary>
+        /// Sets <see cref="ast"/> to an instance of a new <see cref="Literal"/>
+        /// given <see cref="Previous"/>'s value.
+        /// </summary>
         private void ParseLiteral()
         {
             ast = new Literal(Previous.value);
         }
 
+        /// <summary>
+        /// Hook into <see cref="ParseIdentifier"/>.
+        /// </summary>
+        /// <param name="parser"><see cref="Parser"/> used to parse identifier.</param>
         private static void IdentifierParseFn(Parser parser)
         {
             parser.ParseIdentifier();
         }
 
+        /// <summary>
+        /// Sets <see cref="ast"/> to an instance of a new <see cref="Identifier"/>
+        /// given <see cref="Previous"/>'s source.
+        /// </summary>
         private void ParseIdentifier()
         {
             ast = new Identifier(Previous.source);
         }
 
+        /// <summary>
+        /// Hook into <see cref="ParseUnary"/>.
+        /// </summary>
+        /// <param name="parser"><see cref="Parser"/> used to parse unary expression.</param>
         private static void UnaryParseFn(Parser parser)
         {
             parser.ParseUnary();
         }
 
+        /// <summary>
+        /// Parses a unary expression.
+        /// </summary>
+        /// <exception cref="Exception">If Call to <see cref="ParsePrecedence"/> throws.</exception>
         private void ParseUnary()
         {
             Token op = Previous;
@@ -446,11 +637,22 @@ namespace CustomProject
             }
         }
 
+        /// <summary>
+        /// Hook into <see cref="ParseBinary"/>.
+        /// </summary>
+        /// <param name="parser"><see cref="Parser"/> used to parse the binary expression.</param>
         private static void BinaryParseFn(Parser parser)
         {
             parser.ParseBinary();
         }
 
+        /// <summary>
+        /// Parse a binary expression.
+        /// </summary>
+        /// <exception cref="Exception">
+        /// If call to <see cref="ParsePrecedence"/> throws or
+        /// if <see cref="Previous"/> is not a binary operator token.
+        /// </exception>
         private void ParseBinary()
         {
             Token op = Previous;
@@ -530,11 +732,23 @@ namespace CustomProject
             }
         }
 
+        /// <summary>
+        /// Hook into <see cref="ParseMemberReference"/>.
+        /// </summary>
+        /// <param name="parser"><see cref="Parser"/> used to parse the member reference expression.</param>
         private static void MemberReferenceParseFn(Parser parser)
         {
             parser.ParseMemberReference();
         }
 
+        /// <summary>
+        /// Parses a member reference.
+        /// </summary>
+        /// <remarks>
+        /// <see cref="ast"/> may be set to a <see cref="MemberReference"/> instance or an
+        /// <see cref="Invocation"/> if '(' immediately follows.
+        /// </remarks>
+        /// <exception cref="Exception">If there is a parse error.</exception>
         private void ParseMemberReference()
         {
             Expect(Token.Kind.Identifier, "Expected identifier after '.'.");
@@ -550,7 +764,7 @@ namespace CustomProject
                     do
                     {
                         ParseExpression();
-                        args.AddExpression(ast);
+                        args.AddNode(ast);
                     } while (Next(Token.Kind.Comma) && !Check(Token.Kind.EOF));
                 }
                 Expect(Token.Kind.DelimCloseParenthesis, "Expected ')' to end method call.");
@@ -563,11 +777,23 @@ namespace CustomProject
             }
         }
 
+        /// <summary>
+        /// Hook into <see cref="ParseAssignment"/>.
+        /// </summary>
+        /// <param name="parser"><see cref="Parser"/> used to parse the assignment statement.</param>
         private static void AssigmentParseFn(Parser parser)
         {
             parser.ParseAssignment();
         }
 
+        /// <summary>
+        /// Parses an assignment statement.
+        /// </summary>
+        /// <remarks>
+        /// <see cref="ast"/> will be set to a different type of assignment node
+        /// depending on what is the left hand side node.
+        /// </remarks>
+        /// <exception cref="Exception">If there is a parse error.</exception>
         private void ParseAssignment()
         {
             IAST lhs = ast;
@@ -589,6 +815,12 @@ namespace CustomProject
             }   
         }
 
+        /// <summary>
+        /// Parses an assignment statement where the left hand side node is
+        /// an <see cref="Identifier"/> node.
+        /// </summary>
+        /// <param name="id">The target of the assignment.</param>
+        /// <exception cref="Exception">If call to <see cref="ParseExpression"/> throws.</exception>
         private void ParseAssignmentIdentifier(Identifier id)
         {
             ParseExpression();
@@ -596,6 +828,12 @@ namespace CustomProject
             ast = new VariableAssignment(id.Id, assigner);
         }
 
+        /// <summary>
+        /// Parses an assignment statement where the left hand side node is
+        /// a <see cref="Subscript"/> node.
+        /// </summary>
+        /// <param name="sub">The target of the assignment.</param>
+        /// <exception cref="Exception">If call to <see cref="ParseExpression"/> throws.</exception>
         private void ParseAssignmentSubscript(Subscript sub)
         {
             IAST list = sub.Lhs;
@@ -607,6 +845,12 @@ namespace CustomProject
             ast = new SubscriptAssignment(list, subscript, assigner);
         }
 
+        /// <summary>
+        /// Parses an assignment statement where the left hand side node is
+        /// a <see cref="MemberReference"/> node.
+        /// </summary>
+        /// <param name="memRef">The target of the assignment.</param>
+        /// <exception cref="Exception">If call to <see cref="ParseExpression"/> throws.</exception>
         private void ParseAssignmentMemberReference(MemberReference memRef)
         {
             IAST instance = memRef.Instance;
@@ -618,11 +862,19 @@ namespace CustomProject
             ast = new MemberReferenceAssignment(instance, member, assigner);
         }
 
+        /// <summary>
+        /// Hook into <see cref="ParseList"/>.
+        /// </summary>
+        /// <param name="parser"><see cref="Parser"/> used to parse the list expression.</param>
         private static void ListParseFn(Parser parser)
         {
             parser.ParseList();
         }
 
+        /// <summary>
+        /// Parses a list expression.
+        /// </summary>
+        /// <exception cref="Exception">If there was a parse error.</exception>
         private void ParseList()
         {
             ListExpression list = new ListExpression();
@@ -631,18 +883,26 @@ namespace CustomProject
                 do
                 {
                     ParseExpression();
-                    list.AddExpression(ast);
+                    list.AddNode(ast);
                 } while (Next(Token.Kind.Comma) && !Check(Token.Kind.EOF));
             }
             Expect(Token.Kind.DelimCloseBracket, "Expected ']' keyword to terminate List literal.");
             ast = list;
         }
 
+        /// <summary>
+        /// Hook into <see cref="ParseInvocation"/>.
+        /// </summary>
+        /// <param name="parser"><see cref="Parser"/> used to parse the invocation expression.</param>
         private static void InvokeParseFn(Parser parser)
         {
             parser.ParseInvocation();
         }
 
+        /// <summary>
+        /// Parses an invocation expression such as a function call etc.
+        /// </summary>
+        /// <exception cref="Exception">If there was a parse error.</exception>
         private void ParseInvocation()
         {
             IAST lhs = ast;
@@ -654,7 +914,7 @@ namespace CustomProject
                 do
                 {
                     ParseExpression();
-                    args.AddExpression(ast);
+                    args.AddNode(ast);
                 } while (Next(Token.Kind.Comma) && !Check(Token.Kind.EOF));
                 Expect(Token.Kind.DelimCloseParenthesis, "Expected ')' after invocation.");
             }
@@ -662,6 +922,14 @@ namespace CustomProject
             ast = new Invocation(lhs, args);
         }
 
+        /// <summary>
+        /// Parses a function declaration.
+        /// </summary>
+        /// <remarks>
+        /// Is called in <see cref="ParseFunctionDeclaration"/> and
+        /// in <see cref="ClassDeclaration"/> so is wrapped in its own method.
+        /// </remarks>
+        /// <exception cref="Exception">If there was a parse error.</exception>
         private void ParseFunctionDeclarationUnwrapped()
         {
             lambdaDepth++;
@@ -706,6 +974,11 @@ namespace CustomProject
             lambdaDepth--;
         }
 
+        /// <summary>
+        /// Parses a function declaration and sets <see cref="ast"/> to a new 
+        /// <see cref="ConstantInstantiation"/> instance.
+        /// </summary>
+        /// <exception cref="Exception">If there was a parse error.</exception>
         private void ParseFunctionDeclaration()
         {
             ParseFunctionDeclarationUnwrapped();
@@ -713,11 +986,19 @@ namespace CustomProject
             ast = new ConstantInstantiation(lambda.Id, lambda);
         }
 
+        /// <summary>
+        /// Hook into <see cref="ParseLambdaExpression"/>.
+        /// </summary>
+        /// <param name="parser"><see cref="Parser"/> used to parse the lambda expression.</param>
         private static void LambdaParseFn(Parser parser)
         {
             parser.ParseLambdaExpression();
         }
 
+        /// <summary>
+        /// Parses a lambda expression.
+        /// </summary>
+        /// <exception cref="Exception">If there was a parse error.</exception>
         private void ParseLambdaExpression()
         {
             List<string> args = new List<string>();
@@ -755,12 +1036,16 @@ namespace CustomProject
             {
                 body = new Block();
                 ParseExpression();
-                body.AddExpression(ast);
+                body.AddNode(ast);
             }
 
             ast = new LambdaExpression(args, body, varargs);
         }
 
+        /// <summary>
+        /// Parses a class declaration.
+        /// </summary>
+        /// <exception cref="Exception">If there was a parse error.</exception>
         private void ParseClassDeclaration()
         {
             Expect(Token.Kind.Identifier, "Expected identifier after 'class' keyword.");
@@ -805,6 +1090,10 @@ namespace CustomProject
             ast = new ClassDeclaration(id, superClass, methods, classMethods);
         }
 
+        /// <summary>
+        /// Parses a super statement.
+        /// </summary>
+        /// <exception cref="Exception">If there was a parse error.</exception>
         private void ParseSuperStatement()
         {
             SuperStatement super = new SuperStatement();
@@ -816,7 +1105,7 @@ namespace CustomProject
                 do
                 {
                     ParseExpression();
-                    super.AddExpression(ast);
+                    super.AddNode(ast);
                 } while (Next(Token.Kind.Comma) && !Check(Token.Kind.EOF));
             }
 
@@ -825,6 +1114,10 @@ namespace CustomProject
             ast = super;
         }
 
+        /// <summary>
+        /// Parses an if statement.
+        /// </summary>
+        /// <exception cref="Exception">If there was a parse error.</exception>
         private void ParseIfStatement()
         {
             ParseExpression();
@@ -852,6 +1145,10 @@ namespace CustomProject
             ast = new IfStatement(cond, then, @else);
         }
 
+        /// <summary>
+        /// Parses a while-loop statement.
+        /// </summary>
+        /// <exception cref="Exception">If there was a parse error.</exception>
         private void ParseWhileStatement()
         {
             loopDepth++;
@@ -868,6 +1165,10 @@ namespace CustomProject
             loopDepth--;
         }
 
+        /// <summary>
+        /// Parses a for-loop statement.
+        /// </summary>
+        /// <exception cref="Exception">If there was a parse error.</exception>
         private void ParseForStatement()
         {
             loopDepth++;

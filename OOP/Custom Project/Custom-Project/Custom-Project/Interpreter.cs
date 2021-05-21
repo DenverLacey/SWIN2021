@@ -4,10 +4,25 @@ using System.Text;
 
 namespace CustomProject
 {
+    /// <summary>
+    /// the main class for interpreting code.
+    /// Is made of a tokenizer, parser and virtual machine.
+    /// </summary>
     public class Interpreter
     {
+        /// <summary>
+        /// Responsible for turning raw source code into a list of tokens.
+        /// </summary>
         private Tokenizer tokenizer;
+
+        /// <summary>
+        /// Responsible for turning a list of tokens into an AST.
+        /// </summary>
         private Parser parser;
+
+        /// <summary>
+        /// Is used to execute AST and store its outputs.
+        /// </summary>
         private VM vm;
 
         public Interpreter()
@@ -19,6 +34,10 @@ namespace CustomProject
             LoadPrelude();
         }
 
+        /// <summary>
+        /// Interprets a single file of source code and executes it.
+        /// </summary>
+        /// <param name="filepath">filepath to source code.</param>
         public void Interpret(string filepath)
         {
             string source = GetSourceCode(filepath);
@@ -39,6 +58,11 @@ namespace CustomProject
             }
         }
 
+        /// <summary>
+        /// Opens and reads the given file and returns it as a single string.
+        /// </summary>
+        /// <param name="filepath">File to read.</param>
+        /// <returns>Source code written in the file.</returns>
         private static string GetSourceCode(string filepath)
         {
             FileStream fstream = File.OpenRead(filepath);
@@ -47,6 +71,9 @@ namespace CustomProject
             return Encoding.ASCII.GetString(bytes);
         }
 
+        /// <summary>
+        /// Interprets source code for the languages prelude.
+        /// </summary>
         private void LoadPrelude()
         {
             const string preludeSource =

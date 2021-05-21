@@ -3,8 +3,16 @@ using System.Collections.Generic;
 
 namespace CustomProject
 {
+    /// <summary>
+    /// A Token is a combination of characters with a semantic meaning
+    /// in the language.
+    /// </summary>
     public struct Token
     {
+        /// <summary>
+        /// The different semantic meanings of different combinations
+        /// of characters.
+        /// </summary>
         public enum Kind
         {
             EOF,
@@ -75,9 +83,17 @@ namespace CustomProject
             this.value = value;
         }
 
+        /// <value>New token where kind = EOF.</value>
         public static Token EOF { get => new Token(Kind.EOF, -1, "", null); }
+        /// <value>New token where kind = EOL.</value>
         public static Token EOL { get => new Token(Kind.EOL, -1, "", null); }
 
+        /// <summary>
+        /// Wrapper for making Error tokens
+        /// </summary>
+        /// <param name="err">Error message.</param>
+        /// <param name="indentation">Indentation level for this token.</param>
+        /// <returns>An error token with error message.</returns>
         public static Token Error(string err, int indentation)
         {
             return new Token(Kind.Error, indentation, err, null);
@@ -88,7 +104,10 @@ namespace CustomProject
             return string.Format("{{ {0}, \"{1}\", {2} }}", kind, source.Replace(Environment.NewLine, "\\n"), value);
         }
     }
-    
+
+    /// <summary>
+    /// Tokenizer is used to turn source code into a list ok tokens
+    /// </summary>
     public class Tokenizer
     {
         private string source;
@@ -96,6 +115,7 @@ namespace CustomProject
         private int tokenLength;
         private int currentIndentation;
 
+        /// <value>Gets the current character or 0 if at the end of the file.</value>
         private char CurrentChar
         {
             get
@@ -111,6 +131,7 @@ namespace CustomProject
             }
         }
 
+        /// <value>Gets the previous character or 0 if at the end of the file.</value>
         private char PreviousChar
         {
             get
@@ -127,6 +148,7 @@ namespace CustomProject
             }
         }
 
+        /// <value>Gets the next character or 0 if at the end of the file.</value>
         private char NextChar
         {
             get
@@ -143,6 +165,7 @@ namespace CustomProject
             }
         }
 
+        /// <value>Gets the source code of current token.</value>
         private string TokenString
         {
             get
@@ -167,6 +190,11 @@ namespace CustomProject
             currentIndentation = 0;
         }
 
+        /// <summary>
+        /// Tokenizes given source code into a list of tokens.
+        /// </summary>
+        /// <param name="source">Source code to tokenize.</param>
+        /// <returns>A list of tokens generated from the given source code.</returns>
         public List<Token> Tokenize(string source)
         {
             tokenStart = 0;
@@ -208,6 +236,10 @@ namespace CustomProject
             return tokens;
         }
 
+        /// <summary>
+        /// Nudges 'tokenStart' forward until either a non-whitespace
+        /// character or the end of the file is reached.
+        /// </summary>
         private void SkipWhitespace()
         {
             while (tokenStart < source.Length && char.IsWhiteSpace(source[tokenStart]))
@@ -216,6 +248,11 @@ namespace CustomProject
             }
         }
 
+        /// <summary>
+        /// Sets the current indentation for a line.
+        /// Nudges 'tokenStart' forward until either a non-whitespace
+        /// character or the end of the file is reached.
+        /// </summary>
         private void ProcessIndentation()
         {
             while (tokenStart < source.Length && char.IsWhiteSpace(source[tokenStart]))
@@ -225,6 +262,10 @@ namespace CustomProject
             }
         }
 
+        /// <summary>
+        /// Generates Single token from the source code.
+        /// </summary>
+        /// <returns>The Token that correspondes to the current glob of source code</returns>
         private Token ProcessToken()
         {
             tokenLength = 0;
@@ -262,6 +303,10 @@ namespace CustomProject
             return token;
         }
 
+        /// <summary>
+        /// Processes the source code assuming that it represents a number literal.
+        /// </summary>
+        /// <returns>A number token if success or an error token if not.</returns>
         private Token ProcessNumber()
         {
             do
@@ -289,6 +334,10 @@ namespace CustomProject
             return new Token(Token.Kind.LiteralNumber, currentIndentation, numberString, numberVal);
         }
 
+        /// <summary>
+        /// Processes the source code assuming that it represents a string literal.
+        /// </summary>
+        /// <returns>A string token if success or an error token if not.</returns>
         private Token ProcessString()
         {
             // skip " character
@@ -313,6 +362,10 @@ namespace CustomProject
             return token;
         }
 
+        /// <summary>
+        /// Processes the source code assuming that it represents a char literal.
+        /// </summary>
+        /// <returns>A character token if success or an error token if not.</returns>
         private Token ProcessCharacter()
         {
             // skip ' character
@@ -337,6 +390,11 @@ namespace CustomProject
             return token;
         }
 
+        /// <summary>
+        /// Processes the source assuming that it represents either an identifier
+        /// or a keyword of the language.
+        /// </summary>
+        /// <returns>Either an identifier token or a keyword token.</returns>
         private Token ProcessIdentifierOrKeyword()
         {
             do
@@ -441,6 +499,10 @@ namespace CustomProject
             return new Token(kind, currentIndentation, word, value);
         }
 
+        /// <summary>
+        /// Processes the source code assuming that it represents an opearator.
+        /// </summary>
+        /// <returns>An operator token if success or an error token if not.</returns>
         private Token ProcessOperator()
         {
             tokenLength = 1;
