@@ -68,18 +68,6 @@ namespace CustomProject
             var tokens = tokenizer.Tokenize(source);
             var program = parser.Parse(tokens);
             vm.Execute(program);
-
-            Console.WriteLine("\nVariables:");
-            foreach (var binding in vm.Variables)
-            {
-                Console.WriteLine("{0}: {1} = {2}", binding.Key, binding.Value.Type, binding.Value);
-            }
-
-            Console.WriteLine("\nConstants:");
-            foreach (var binding in vm.Constants)
-            {
-                Console.WriteLine("{0}: {1} = {2}", binding.Key, binding.Value.Type, binding.Value);
-            }
         }
 
         /// <summary>
