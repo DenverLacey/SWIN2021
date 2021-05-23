@@ -214,7 +214,7 @@ namespace CustomProject
     }
 
     /// <summary>
-    /// Tokenizer is used to turn source code into a list ok tokens
+    /// Tokenizer is used to turn source code into a list of tokens
     /// </summary>
     public class Tokenizer
     {
@@ -1049,7 +1049,7 @@ namespace CustomProject
         /// </summary>
         /// <remarks>
         /// When this method returns, <see cref="ast"/> will be the AST that represents
-        /// the declartion.
+        /// the declaration.
         /// </remarks>
         /// <exception cref="Exception">If there is a parse error.</exception>
         private void ParseDeclaration()
@@ -2435,7 +2435,7 @@ namespace CustomProject
         /// Gets the underlying <see cref="InstanceValue"/>.
         /// </summary>
         /// <remarks>
-        /// Used to down cast a <see cref="Value"/> to a <see cref="InstanceValue"/>.
+        /// Used to down cast a <see cref="Value"/> to an <see cref="InstanceValue"/>.
         /// </remarks>
         public override InstanceValue Instance { get => this; }
 
@@ -4192,9 +4192,9 @@ namespace CustomProject
         /// <exception cref="Exception">If there is an argument mismatch.</exception>
         private void SetArguments(VM vm, VM @new, LambdaExpression lambda, List<IAST> args)
         {
-            bool is_varargs = lambda.IsVarargs();
+            bool isVarargs = lambda.IsVarargs();
 
-            if (is_varargs)
+            if (isVarargs)
             {
                 if (args.Count < lambda.Args.Count - 1)
                 {
@@ -4210,7 +4210,7 @@ namespace CustomProject
                     lambda.Id, lambda.Args.Count, args.Count));
             }
 
-            if (is_varargs)
+            if (isVarargs)
             {
                 for (int i = 0; i < lambda.Args.Count - 1; i++)
                 {
