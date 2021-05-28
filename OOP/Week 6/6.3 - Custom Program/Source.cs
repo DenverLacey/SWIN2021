@@ -3174,36 +3174,36 @@ namespace CustomProject
                 switch (it.Type)
                 {
                     case Value.ValueType.Number:
+                    {
+                        bool @break;
+                        if (range.Inclusive)
                         {
-                            bool @break;
-                            if (range.Inclusive)
-                            {
-                                @break = it.Number > end.Number;
-                            }
-                            else
-                            {
-                                @break = it.Number >= end.Number;
-                            }
-
-                            if (@break) return;
-                            break;
+                            @break = it.Number > end.Number;
                         }
+                        else
+                        {
+                            @break = it.Number >= end.Number;
+                        }
+
+                        if (@break) return;
+                        break;
+                    }
 
                     case Value.ValueType.Char:
+                    {
+                        bool @break;
+                        if (range.Inclusive)
                         {
-                            bool @break;
-                            if (range.Inclusive)
-                            {
-                                @break = it.Char > end.Char;
-                            }
-                            else
-                            {
-                                @break = it.Char >= end.Char;
-                            }
-
-                            if (@break) return;
-                            break;
+                            @break = it.Char > end.Char;
                         }
+                        else
+                        {
+                            @break = it.Char >= end.Char;
+                        }
+
+                        if (@break) return;
+                        break;
+                    }
 
                     default:
                         throw new Exception(string.Format("Internal Error: Range<{0}>.", it.Type));
@@ -4387,80 +4387,80 @@ namespace CustomProject
             switch (methodName)
             {
                 case "add":
+                {
+                    Block args = Rhs as Block;
+                    if (args == null)
                     {
-                        Block args = Rhs as Block;
-                        if (args == null)
-                        {
-                            throw new Exception("Internal: 'rhs' of 'Invocation' was not a 'Block'.");
-                        }
-
-                        if (args.Nodes.Count != 1)
-                        {
-                            throw new Exception(string.Format("Argument Mistmatch! List.add takes 1 argument(s) but was given {0}.", args.Nodes.Count));
-                        }
-
-                        Value value = args.Nodes[0].Execute(vm);
-                        list.Add(value);
-                        break;
+                        throw new Exception("Internal: 'rhs' of 'Invocation' was not a 'Block'.");
                     }
+
+                    if (args.Nodes.Count != 1)
+                    {
+                        throw new Exception(string.Format("Argument Mistmatch! List.add takes 1 argument(s) but was given {0}.", args.Nodes.Count));
+                    }
+
+                    Value value = args.Nodes[0].Execute(vm);
+                    list.Add(value);
+                    break;
+                }
                 case "insert":
+                {
+                    Block args = Rhs as Block;
+                    if (args == null)
                     {
-                        Block args = Rhs as Block;
-                        if (args == null)
-                        {
-                            throw new Exception("Internal: 'rhs' of 'Invocation' was not a 'Block'.");
-                        }
-
-                        if (args.Nodes.Count != 2)
-                        {
-                            throw new Exception(string.Format("Argument Mistmatch! List.push takes 2 argument(s) but was given {0}.", args.Nodes.Count));
-                        }
-
-                        Value idx = args.Nodes[0].Execute(vm);
-                        Value.AssertType(Value.ValueType.Number, idx,
-                            "Type mismatch! List.remove expects first argument to be 'Number' but was given '{0}'.", idx.Type);
-
-                        Value value = args.Nodes[1].Execute(vm);
-
-                        list.Insert((int)idx.Number, value);
-                        break;
+                        throw new Exception("Internal: 'rhs' of 'Invocation' was not a 'Block'.");
                     }
+
+                    if (args.Nodes.Count != 2)
+                    {
+                        throw new Exception(string.Format("Argument Mistmatch! List.push takes 2 argument(s) but was given {0}.", args.Nodes.Count));
+                    }
+
+                    Value idx = args.Nodes[0].Execute(vm);
+                    Value.AssertType(Value.ValueType.Number, idx,
+                        "Type mismatch! List.remove expects first argument to be 'Number' but was given '{0}'.", idx.Type);
+
+                    Value value = args.Nodes[1].Execute(vm);
+
+                    list.Insert((int)idx.Number, value);
+                    break;
+                }
                 case "find":
+                {
+                    Block args = Rhs as Block;
+                    if (args == null)
                     {
-                        Block args = Rhs as Block;
-                        if (args == null)
-                        {
-                            throw new Exception("Internal: 'rhs' of 'Invocation' was not a 'Block'.");
-                        }
-
-                        if (args.Nodes.Count != 1)
-                        {
-                            throw new Exception(string.Format("Argument Mistmatch! List.push takes 1 argument(s) but was given {0}.", args.Nodes.Count));
-                        }
-
-                        Value value = args.Nodes[0].Execute(vm);
-                        return new NumberValue(list.FindIndex(v => v.Equal(value)));
+                        throw new Exception("Internal: 'rhs' of 'Invocation' was not a 'Block'.");
                     }
+
+                    if (args.Nodes.Count != 1)
+                    {
+                        throw new Exception(string.Format("Argument Mistmatch! List.push takes 1 argument(s) but was given {0}.", args.Nodes.Count));
+                    }
+
+                    Value value = args.Nodes[0].Execute(vm);
+                    return new NumberValue(list.FindIndex(v => v.Equal(value)));
+                }
                 case "remove":
+                {
+                    Block args = Rhs as Block;
+                    if (args == null)
                     {
-                        Block args = Rhs as Block;
-                        if (args == null)
-                        {
-                            throw new Exception("Internal: 'rhs' of 'Invocation' was not a 'Block'.");
-                        }
-
-                        if (args.Nodes.Count != 1)
-                        {
-                            throw new Exception(string.Format("Argument Mistmatch! List.push takes 1 argument(s) but was given {0}.", args.Nodes.Count));
-                        }
-
-                        Value value = args.Nodes[0].Execute(vm);
-                        Value.AssertType(Value.ValueType.Number, value,
-                            "Type mismatch! List.remove expects first argument to be 'Number' but was given '{0}'.", value.Type);
-
-                        list.RemoveAt((int)value.Number);
-                        break;
+                        throw new Exception("Internal: 'rhs' of 'Invocation' was not a 'Block'.");
                     }
+
+                    if (args.Nodes.Count != 1)
+                    {
+                        throw new Exception(string.Format("Argument Mistmatch! List.push takes 1 argument(s) but was given {0}.", args.Nodes.Count));
+                    }
+
+                    Value value = args.Nodes[0].Execute(vm);
+                    Value.AssertType(Value.ValueType.Number, value,
+                        "Type mismatch! List.remove expects first argument to be 'Number' but was given '{0}'.", value.Type);
+
+                    list.RemoveAt((int)value.Number);
+                    break;
+                }
 
                 default:
                     throw new Exception(string.Format("'{0}' is not a method of 'List'.", methodName));
@@ -4485,23 +4485,23 @@ namespace CustomProject
             switch (methodName)
             {
                 case "concat":
+                {
+                    Block args = Rhs as Block;
+                    if (args == null)
                     {
-                        Block args = Rhs as Block;
-                        if (args == null)
-                        {
-                            throw new Exception("Internal: 'rhs' of 'Invocation' was not a 'Block'.");
-                        }
-
-                        StringBuilder builder = new StringBuilder(str.String);
-                        foreach (IAST expr in args.Nodes)
-                        {
-                            Value arg = expr.Execute(vm);
-                            builder.Append(arg.ToString());
-                        }
-
-                        str.ReplaceString(builder.ToString());
-                        break;
+                        throw new Exception("Internal: 'rhs' of 'Invocation' was not a 'Block'.");
                     }
+
+                    StringBuilder builder = new StringBuilder(str.String);
+                    foreach (IAST expr in args.Nodes)
+                    {
+                        Value arg = expr.Execute(vm);
+                        builder.Append(arg.ToString());
+                    }
+
+                    str.ReplaceString(builder.ToString());
+                    break;
+                }
 
                 default:
                     throw new Exception(string.Format("'{0}' is not a method of 'String'.", methodName));
