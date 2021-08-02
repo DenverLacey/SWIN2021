@@ -1,0 +1,22 @@
+Lab 1 Notes
+
+Group Name: Group 2
+Group Members:
+	- Anthony Burke
+	- Dominic Yeoh
+	- Eamon Powell
+	- Marcus Rakkhit
+
+Tutor's Name: Naurin Afrin
+
+Todo:
+	[x] - Reminder to Create project proposal group in Doubtfire
+
+Research:
+	- SQL stuff for C#: https://docs.microsoft.com/en-us/azure/azure-sql/database/connect-query-dotnet-visual-studio
+	- WinForms stuff for C#: https://docs.microsoft.com/en-us/visualstudio/ide/create-csharp-winform-visual-studio?toc=%2Fvisualstudio%2Fget-started%2Fcsharp%2Ftoc.json&bc=%2Fvisualstudio%2Fget-started%2Fcsharp%2Fbreadcrumb%2Ftoc.json&view=vs-2019
+	- MySQL Library docs: https://dev.mysql.com/doc/connector-net/en/connector-net-tutorials-sql-command.html
+
+Terms:
+	- Sprint: an iteration of a particular function
+
