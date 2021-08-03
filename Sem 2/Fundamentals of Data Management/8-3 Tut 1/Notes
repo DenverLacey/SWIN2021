@@ -1,0 +1,12 @@
+FDM Tut 1
+
+online terminal: cocalc.com/doc/terminal.html
+
+P111 command: grep Mozilla access.log
+
+Grep Manual:
+	can be accessed with command 'man grep'
+
+	'-c, --count': prints number of matching lines instead of the normal output
+	'-n, --line-number': Prefix each line of output with the 1-based line number within its input file
+
